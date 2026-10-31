@@ -1,10 +1,12 @@
 const { loadConfig, dataDir } = require('./config');
-const { signin } = require('./google-auth');
+const { signin, createAuth } = require('./google-auth');
+const { makeRoutes } = require('./routes');
 const { createServer, listen, PORT } = require('./server');
 
 async function serve() {
   const config = loadConfig();
-  const server = createServer({ token: config.token, routes: [] }); // Task 3 adds routes
+  const auth = createAuth({ dir: dataDir() });
+  const server = createServer({ token: config.token, routes: makeRoutes({ auth, fetch, now: Date.now }) });
   await listen(server, PORT);
   console.log(`Companion token: ${config.token}`);
   console.log(`Listening on http://127.0.0.1:${PORT}`);
