@@ -1,0 +1,95 @@
+[
+ {
+  "entity_id": "camera.camera_back_garden_high_resolution_channel",
+  "state": "idle",
+  "attributes": {},
+  "last_changed": "2026-10-31T08:00:00+00:00"
+ },
+ {
+  "entity_id": "camera.camera_front_high_resolution_channel",
+  "state": "unavailable",
+  "attributes": {},
+  "last_changed": "2026-10-31T09:12:00+00:00"
+ },
+ {
+  "entity_id": "camera.doorbell_front_high_resolution_channel",
+  "state": "idle",
+  "attributes": {},
+  "last_changed": "2026-10-31T08:00:00+00:00"
+ },
+ {
+  "entity_id": "climate.damian_s_office",
+  "state": "cool",
+  "attributes": {
+   "temperature": 21,
+   "current_temperature": 23.5
+  },
+  "last_changed": "2026-10-31T08:00:00+00:00"
+ },
+ {
+  "entity_id": "climate.damian_s_bedroom",
+  "state": "off",
+  "attributes": {},
+  "last_changed": "2026-10-31T08:00:00+00:00"
+ },
+ {
+  "entity_id": "climate.downstairs_office",
+  "state": "off",
+  "attributes": {},
+  "last_changed": "2026-10-31T08:00:00+00:00"
+ },
+ {
+  "entity_id": "climate.kitchen",
+  "state": "off",
+  "attributes": {},
+  "last_changed": "2026-10-31T08:00:00+00:00"
+ },
+ {
+  "entity_id": "climate.living_room",
+  "state": "off",
+  "attributes": {},
+  "last_changed": "2026-10-31T08:00:00+00:00"
+ },
+ {
+  "entity_id": "climate.main_bedroom",
+  "state": "off",
+  "attributes": {},
+  "last_changed": "2026-10-31T08:00:00+00:00"
+ },
+ {
+  "entity_id": "climate.snug",
+  "state": "off",
+  "attributes": {},
+  "last_changed": "2026-10-31T08:00:00+00:00"
+ },
+ {
+  "entity_id": "climate.spare_bedroom",
+  "state": "off",
+  "attributes": {},
+  "last_changed": "2026-10-31T08:00:00+00:00"
+ },
+ {
+  "entity_id": "climate.hallway",
+  "state": "heat",
+  "attributes": {
+   "current_temperature": 19.2,
+   "temperature": 17.9,
+   "hvac_action": "idle",
+   "min_temp": 10,
+   "max_temp": 32
+  },
+  "last_changed": "2026-10-31T08:00:00+00:00"
+ },
+ {
+  "entity_id": "switch.coffee_machine_plug",
+  "state": "on",
+  "attributes": {},
+  "last_changed": "2026-10-31T14:20:00+00:00"
+ },
+ {
+  "entity_id": "light.hall",
+  "state": "off",
+  "attributes": {},
+  "last_changed": "2026-10-31T08:00:00+00:00"
+ }
+]

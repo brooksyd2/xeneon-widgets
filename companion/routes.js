@@ -2,9 +2,10 @@ const { HttpError } = require('./server');
 const { dayRange, listEvents, toEvent } = require('./calendar');
 const { gcall } = require('./google-api');
 const realLauncher = require('./launcher');
+const { homeRoutes } = require('./home');
 const { listInbox, getBody, modifyThread } = require('./gmail');
 
-function makeRoutes({ auth, fetch, now = Date.now, launcher = realLauncher }) {
+function makeRoutes({ auth, fetch, now = Date.now, launcher = realLauncher, ha = null }) {
   // Run fn(token); on a Google 401 refresh once, and treat a second 401 as signed out.
   async function withToken(fn) {
     try { return await fn(await auth.getAccessToken()); } catch (e) {
@@ -56,6 +57,7 @@ function makeRoutes({ auth, fetch, now = Date.now, launcher = realLauncher }) {
     },
     { method: 'POST', path: '/messages/:id/archive', handler: modify('INBOX') },
     { method: 'POST', path: '/messages/:id/read', handler: modify('UNREAD') },
+    ...homeRoutes({ ha }),
   ];
 }
 

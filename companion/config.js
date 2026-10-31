@@ -13,12 +13,12 @@ function loadConfig(dir = dataDir()) {
   let saved = {};
   try { saved = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { if (e.code !== 'ENOENT') throw e; }
   const token = saved.token || crypto.randomBytes(32).toString('hex');
-  const config = { clientId: '', clientSecret: '', ...saved, token };
+  const config = { clientId: '', clientSecret: '', haUrl: '', haToken: '', ...saved, token };
   if (!saved.token) {
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(file, JSON.stringify(config, null, 2));
   }
-  return { dir, token, clientId: config.clientId, clientSecret: config.clientSecret };
+  return { dir, token, clientId: config.clientId, clientSecret: config.clientSecret, haUrl: config.haUrl, haToken: config.haToken };
 }
 
 module.exports = { loadConfig, dataDir };
