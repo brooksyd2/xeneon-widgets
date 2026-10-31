@@ -47,7 +47,7 @@ function toMessage(m) {
 }
 
 async function listInbox({ token, fetch, max = 25 }) {
-  const q = new URLSearchParams({ q: 'in:inbox category:primary', maxResults: String(max) });
+  const q = new URLSearchParams({ q: 'in:inbox category:personal', maxResults: String(max) }); // the API calls the Primary tab "personal"; category:primary matches nothing
   const list = await gcall(fetch, token, `${API}/messages?${q}`);
   const msgs = await Promise.all((list.messages || []).map((x) => {
     const p = new URLSearchParams({ format: 'metadata' });

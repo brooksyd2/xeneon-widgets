@@ -54,7 +54,7 @@ test('listInbox queries Primary then fetches metadata per message', async () => 
   const out = await listInbox({ token: 't', fetch });
   assert.deepStrictEqual(out.map((m) => m.id), ['a', 'b']);
   const q = new URL(urls[0]).searchParams;
-  assert.strictEqual(q.get('q'), 'in:inbox category:primary');
+  assert.strictEqual(q.get('q'), 'in:inbox category:personal');
   assert.strictEqual(q.get('maxResults'), '25');
   assert.deepStrictEqual(new URL(urls[1]).searchParams.getAll('metadataHeaders'), ['From', 'Subject', 'Date']);
 });
