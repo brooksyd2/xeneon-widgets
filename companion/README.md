@@ -18,6 +18,20 @@ A small local service that the Xeneon widgets talk to for Google data (Gmail and
 
 If Internal is not available, use user type External and set the publishing status to **In production**. Google then shows a one-off "unverified app" warning at sign-in, which you can click through.
 
+## Home Assistant set-up
+
+1. In Home Assistant, create a long-lived access token (profile, Security) named `xeneon-companion`.
+2. Put the base URL and token into `config.json`, then restart the companion:
+
+   ```json
+   "haUrl": "http://192.168.1.158:8123",
+   "haToken": "<long-lived token>"
+   ```
+
+Routes (all need the bearer token): `GET /v1/home/state`, `POST /v1/home/ac/:id/toggle`, `POST /v1/home/heating/target`, `POST /v1/home/coffee/on`, `GET /v1/home/cameras/:id/still` (JPEG) and `GET /v1/home/cameras/:id/live` (multipart MJPEG stream; a client disconnect closes the upstream request). Camera ids are `garden`, `front` and `door`.
+
+The two camera routes also accept the token as `?token=<token>`, because an `<img>` element cannot send headers. No other route accepts it.
+
 ## Install and auto-start
 
 1. In the WSL repo run `npm run build` (or `node scripts/build.mjs gmail`), which produces `dist/gmail`. Copy the repo's `companion/` folder to `C:\Users\brook\Documents\xeneon-build\companion\`.
@@ -50,4 +64,4 @@ If Internal is not available, use user type External and set the publishing stat
 
 - Listens on `127.0.0.1:8817` only.
 - Every request except a CORS preflight needs `Authorization: Bearer <token>`.
-- Nothing leaves the PC except requests to Google.
+- Nothing leaves the PC except requests to Google and to Home Assistant on the LAN.

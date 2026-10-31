@@ -52,15 +52,27 @@ function createHa({ url, token, fetch, timeoutMs = 5000 }) {
     const ctl = new AbortController();
     const abort = () => ctl.abort();
     if (signal) { if (signal.aborted) abort(); else signal.addEventListener('abort', abort, { once: true }); }
+    const unlisten = () => signal && signal.removeEventListener('abort', abort);
     const timer = setTimeout(abort, timeoutMs);
     let res;
     try {
       res = await fetch(url + path, { ...init, headers: { ...init.headers, Authorization: `Bearer ${token}` }, signal: ctl.signal });
     } catch (e) {
+      unlisten();
       throw new HttpError(502, 'home_assistant');
     } finally { clearTimeout(timer); }
-    if (res.status === 401) throw new HttpError(503, 'ha_unauthorised');
-    if (!res.ok) throw new HttpError(502, 'home_assistant');
+    if (res.status === 401 || !res.ok) {
+      unlisten();
+      throw res.status === 401 ? new HttpError(503, 'ha_unauthorised') : new HttpError(502, 'home_assistant');
+    }
+    if (!signal) return res;
+    // The caller's abort must keep reaching a streaming body, so the listener stays until the body ends (or the signal aborts, via once).
+    if (res.body) {
+      const done = new TransformStream({ flush: unlisten });
+      res.body.pipeTo(done.writable).catch(unlisten);
+      return { ok: res.ok, status: res.status, headers: res.headers, body: done.readable };
+    }
+    unlisten();
     return res;
   }
   const json = async (path, init) => {
@@ -84,13 +96,19 @@ function validateTarget(value, { min, max }) {
 }
 
 function homeRoutes({ ha }) {
-  const route = (method, path, fn) => ({
-    method, path, handler: async (req, ctx) => {
+  const route = (method, path, fn, queryToken) => ({
+    method, path, ...(queryToken && { queryToken }), handler: async (req, ctx) => {
       if (!ha) throw new HttpError(503, 'ha_not_configured');
       return fn(ctx || {});
     },
   });
   const ok = { json: { ok: true } };
+  const camera = (kind, upstream) => route('GET', `/home/cameras/:id/${kind}`, async ({ params, signal }) => {
+    const cam = ENTITIES.cameras.find((c) => c.id === params.id);
+    if (!cam) throw new HttpError(404, 'not_found');
+    const res = await ha.raw(`/api/${upstream}/${cam.entity}`, signal);
+    return { contentType: res.headers.get('content-type') || 'image/jpeg', stream: res.body };
+  }, true);
   return [
     route('GET', '/home/state', async () => ({ json: mapState(await ha.get('/api/states')) })),
     route('POST', '/home/ac/:id/toggle', async ({ params, body }) => {
@@ -111,6 +129,8 @@ function homeRoutes({ ha }) {
       await ha.call('switch', 'turn_on', { entity_id: ENTITIES.coffee });
       return ok;
     }),
+    camera('still', 'camera_proxy'),
+    camera('live', 'camera_proxy_stream'),
   ];
 }
 

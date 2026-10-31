@@ -9,7 +9,7 @@ function setup(fetch) {
   const calls = [];
   const wrapped = async (u, init = {}) => { calls.push([u, init]); return fetch(u, init); };
   const routes = homeRoutes({ ha: createHa({ url: 'http://ha:8123', token: 'hatok', fetch: wrapped }) });
-  const call = (method, path, params = {}, body) => routes.find((r) => r.method === method && r.path === path).handler({}, { params, body });
+  const call = (method, path, params = {}, body, signal) => routes.find((r) => r.method === method && r.path === path).handler({}, { params, body, signal });
   return { call, calls };
 }
 
@@ -100,4 +100,55 @@ test('timeout covers only the wait for headers', async () => {
   const res = await slow.raw('/x');
   await new Promise((r) => setTimeout(r, 40));
   assert.strictEqual(res.signal.aborted, false);
+});
+
+const streamReply = (bytes, type = 'image/jpeg', status = 200) => ({
+  ok: status < 400, status, headers: { get: (h) => (h.toLowerCase() === 'content-type' ? type : null) },
+  body: new Response(bytes).body,
+});
+const camera = (fetch, id, kind, signal) => {
+  const s = setup(fetch);
+  return { ...s, result: s.call('GET', `/home/cameras/:id/${kind}`, { id }, undefined, signal) };
+};
+
+test('still proxies camera_proxy for the whitelisted camera', async () => {
+  const c = camera(async () => streamReply('JPEG'), 'door', 'still');
+  const r = await c.result;
+  assert.ok(c.calls[0][0].endsWith('/api/camera_proxy/camera.doorbell_front_high_resolution_channel'));
+  assert.strictEqual(r.contentType, 'image/jpeg');
+  assert.strictEqual(await new Response(r.stream).text(), 'JPEG');
+});
+
+test('live passes the multipart content type and the request signal', async () => {
+  const ctl = new AbortController();
+  const type = 'multipart/x-mixed-replace; boundary=frame';
+  const c = camera(async () => streamReply('x', type), 'garden', 'live', ctl.signal);
+  const r = await c.result;
+  assert.ok(c.calls[0][0].endsWith('/api/camera_proxy_stream/camera.camera_back_garden_high_resolution_channel'));
+  assert.strictEqual(r.contentType, type);
+  assert.strictEqual(c.calls[0][1].signal.aborted, false);
+  ctl.abort();
+  assert.strictEqual(c.calls[0][1].signal.aborted, true);
+});
+
+test('caller abort listener is removed once headers arrive', async () => {
+  let added = 0, removed = 0;
+  const signal = { aborted: false, addEventListener: () => added++, removeEventListener: () => removed++ };
+  await createHa({ url: 'http://ha', token: 't', fetch: async () => ({ ok: true, status: 200 }) }).raw('/x', signal);
+  assert.deepStrictEqual([added, removed], [1, 1]);
+});
+
+test('camera routes are flagged queryToken and others are not', () => {
+  const routes = homeRoutes({ ha: null });
+  assert.deepStrictEqual(routes.filter((r) => r.queryToken).map((r) => r.path), ['/home/cameras/:id/still', '/home/cameras/:id/live']);
+});
+
+test('unknown camera id is 404 without calling Home Assistant', async () => {
+  const c = camera(async () => streamReply('x'), 'alley', 'still');
+  await assert.rejects(c.result, { status: 404 });
+  assert.strictEqual(c.calls.length, 0);
+});
+
+test('camera 500 from Home Assistant maps to home_assistant', async () => {
+  await assert.rejects(camera(async () => streamReply('', 'text/plain', 500), 'door', 'live').result, { status: 502, kind: 'home_assistant' });
 });
