@@ -1,0 +1,9 @@
+{
+  "name": "xeneon-widgets",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test tests/",
+    "build": "node scripts/build.mjs --all"
+  }
+}

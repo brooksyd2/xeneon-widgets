@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Focus</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg" />
+<meta name="x-icue-property" content="apiKey" data-label="tr('Obsidian API key')" data-type="textfield" data-default="''" />
+<meta name="x-icue-property" content="apiUrl" data-label="tr('Local REST API address')" data-type="textfield" data-default="'http://127.0.0.1:27123'" />
+<meta name="x-icue-property" content="peopleFolder" data-label="tr('People folder')" data-type="textfield" data-default="'People'" />
+<script type="application/json" id="x-icue-groups">
+[{ "title": "Obsidian", "properties": ["apiKey", "apiUrl", "peopleFolder"], "info": "Install the Local REST API plugin in Obsidian, enable its HTTP server, then paste its API key here." }]
+</script>
+<link rel="stylesheet" href="shared/edge-ink.css" />
+<style>
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--canvas); overflow: hidden; }
+body { color: var(--ink); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; user-select: none; -webkit-tap-highlight-color: transparent; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-align: left; }
+button:focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; border-radius: var(--radius-sm); }
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.hand { font-family: var(--font-hand); font-weight: 500; line-height: 1; text-transform: lowercase; color: var(--mint); }
+.muted { color: var(--ink-muted); }
+.danger { color: var(--danger); }
+.warn { color: var(--warning); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* Widget frame: the tile is the panel */
+.w { position: absolute; inset: 0; display: grid; background: var(--surface); border: var(--stroke-panel) solid var(--line); border-radius: var(--radius-panel); overflow: hidden; }
+.w[data-size="s"] { grid-template-columns: minmax(0, 1fr) 320px; grid-template-rows: minmax(0, 1fr) 28px; gap: 12px 20px; padding: 18px 22px 16px; }
+.w[data-size="xl"] { grid-template-columns: 940px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 32px; gap: 18px 40px; padding: 30px 36px 24px; }
+.span { grid-column: 1 / -1; }
+
+/* Next up card */
+.next { position: relative; display: flex; flex-direction: column; min-height: 0; background: var(--surface-raised); border-radius: var(--radius-md); }
+.s .next { padding: 16px 20px 16px 12px; gap: 8px; }
+.xl .next { padding: 32px 40px 32px 28px; gap: 20px; }
+.next-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+.s .next-head { padding-left: 8px; }
+.xl .next-head { padding-left: 12px; }
+.s .next-head .hand { font-size: 38px; }
+.xl .next-head .hand { font-size: 48px; }
+.next-body { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; min-height: 0; flex: 1; }
+.s .next-body { gap: 4px; }
+.xl .next-body { gap: 12px; }
+.next-text { display: block; width: 100%; font-weight: 500; color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; border-radius: var(--radius-sm); }
+.s .next-text { font-size: 32px; line-height: 38px; -webkit-line-clamp: 3; margin-top: 12px; }
+.xl .next-text { font-size: 52px; line-height: 62px; -webkit-line-clamp: 4; margin-top: 16px; letter-spacing: -0.01em; }
+.next-meta { display: flex; flex-wrap: wrap; align-items: center; color: var(--ink-muted); }
+.s .next-meta { gap: 6px 16px; font-size: 22px; line-height: 28px; padding-left: 8px; flex-wrap: nowrap; overflow: hidden; white-space: nowrap; }
+.xl .next-meta { gap: 16px 28px; font-size: 26px; line-height: 34px; padding-left: 12px; }
+.meta-item { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.s .meta-item.note { overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; display: block; }
+.xl .meta-sep { display: none; }
+.people { display: inline-flex; gap: 10px; }
+.chip { display: inline-flex; align-items: center; height: 44px; padding: 0 16px; border-radius: var(--radius-pill); background: var(--surface); color: var(--ink); font-size: 24px; }
+.note-link { display: inline-flex; align-items: center; gap: 10px; min-height: var(--touch-min); color: var(--ink-muted); }
+
+/* Badge */
+.badge { display: inline-flex; align-items: center; gap: 8px; border-radius: var(--radius-pill); white-space: nowrap; font-size: 22px; line-height: 1; }
+.s .badge { height: 36px; padding: 0 14px; }
+.xl .badge { height: 44px; padding: 0 18px; font-size: 24px; }
+.badge .dot { width: 10px; height: 10px; border-radius: var(--radius-pill); background: currentColor; }
+.badge.danger { background: var(--danger-soft); color: var(--danger); }
+.badge.warn { background: var(--warning-soft); color: var(--warning); }
+.badge.mint { background: var(--mint-soft); color: var(--mint); }
+.badge.neutral { background: var(--surface-raised); color: var(--ink-muted); }
+
+/* Checkbox: hand-drawn box, mint tick. Hit area is always at least touch-min. */
+.cb { position: relative; flex: none; display: grid; place-items: center; border-radius: var(--radius-md); touch-action: manipulation; }
+.cb:active { background: var(--line); }
+.cb svg { overflow: visible; }
+.cb .box { fill: none; stroke: var(--line-strong); stroke-width: var(--stroke-mark-fine); stroke-linecap: round; stroke-linejoin: round; }
+.cb .tick { fill: none; stroke: var(--mint); stroke-width: var(--stroke-mark); stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 240; stroke-dashoffset: 240; }
+.over .cb .box { stroke: var(--danger); }
+.cb-l { width: 72px; height: 72px; }
+.cb-l svg { width: 44px; height: 44px; }
+.xl .cb-l { width: 104px; height: 104px; }
+.xl .cb-l svg { width: 64px; height: 64px; }
+.cb-m { width: 64px; height: 64px; }
+.cb-m svg { width: 34px; height: 34px; }
+.xl .cb-m svg { width: 38px; height: 38px; }
+.cb[disabled] { cursor: default; }
+.cb[disabled] .box { stroke: var(--ink-faint); stroke-dasharray: 3 5; }
+.cb[disabled]:active { background: none; }
+
+/* Hand circle around the overdue date */
+.ring { position: relative; display: inline-flex; align-items: center; margin: 0 14px; padding: 0 6px; }
+.ring svg { position: absolute; left: -20px; top: -12px; width: calc(100% + 40px); height: calc(100% + 24px); overflow: visible; pointer-events: none; }
+.ring path { fill: none; stroke: var(--danger); stroke-width: var(--stroke-mark-fine); stroke-linecap: round; }
+
+/* Priority glyph */
+.prio { display: inline-block; flex: none; }
+.prio path { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.prio.high path { stroke: var(--ink); }
+.prio.med path { stroke: var(--ink-muted); }
+
+/* Then list */
+.then { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.then-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); flex: none; }
+.s .then-head { height: 44px; padding-top: 4px; }
+.xl .then-head { height: 60px; }
+.then-head .hand { color: var(--ink-muted); }
+.s .then-head .hand { font-size: 36px; }
+.xl .then-head .hand { font-size: 44px; }
+.then-head .count { color: var(--ink-muted); font-size: 22px; }
+.xl .then-head .count { font-size: 24px; }
+.then-head .lead { display: inline-flex; align-items: baseline; gap: 12px; }
+.list { list-style: none; margin: 0; padding: 0; overflow-y: auto; overflow-x: hidden; touch-action: pan-y; overscroll-behavior: contain; scrollbar-width: none; min-height: 0; flex: 1; }
+.list::-webkit-scrollbar { display: none; }
+.xl .list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; align-content: start; }
+.row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; border-top: var(--stroke-panel) solid var(--line); overflow: hidden; }
+.s .row { min-height: 70px; gap: 2px; margin-left: -12px; }
+.xl .row { min-height: 128px; gap: 8px; margin-left: -12px; padding: 8px 0; }
+.row-main { display: flex; flex-direction: column; justify-content: center; min-width: 0; min-height: var(--touch-min); border-radius: var(--radius-sm); }
+.row-text { color: var(--ink); overflow: hidden; }
+.s .row-text { font-size: 24px; line-height: 30px; white-space: nowrap; text-overflow: ellipsis; }
+.xl .row-text { font-size: 28px; line-height: 36px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.row-meta { display: flex; align-items: center; gap: 14px; color: var(--ink-muted); font-size: 22px; line-height: 28px; white-space: nowrap; overflow: hidden; }
+.xl .row-meta { margin-top: 4px; }
+.row-meta .note { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.row .row-text:active, .next-text:active { background: var(--line); }
+
+/* Completing: tick draws, text strikes and fades, then the item leaves */
+.done .cb .tick { stroke-dashoffset: 0; transition: stroke-dashoffset 320ms ease-out; }
+.done .cb .box { stroke: var(--line-strong); }
+.done .next-text, .done .row-text { color: var(--ink-faint); text-decoration: line-through; text-decoration-thickness: 3px; text-decoration-color: var(--ink-faint); transition: color 200ms; }
+.done .next-meta, .done .row-meta { opacity: 0.45; }
+.leaving.next { opacity: 0; transform: translateY(-16px); transition: opacity 240ms ease-in, transform 240ms ease-in; }
+.leaving.row { opacity: 0; max-height: 0 !important; min-height: 0 !important; padding: 0 !important; transition: opacity 180ms, max-height 260ms ease-in, min-height 260ms ease-in, padding 260ms; }
+.promote { background: var(--mint-soft); border-radius: var(--radius-md); border-top-color: transparent; }
+.promote + .row { border-top-color: transparent; }
+.arrive { animation: arrive 320ms ease-out; }
+@keyframes arrive { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+
+/* Footer */
+.foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); color: var(--ink-muted); font-size: 22px; line-height: 28px; white-space: nowrap; min-width: 0; }
+.foot .num { font-size: 20px; }
+.xl .foot .num { font-size: 22px; }
+.foot .badge { height: 32px; font-size: 20px; padding: 0 14px; }
+.xl .foot .badge { height: 36px; font-size: 22px; }
+
+/* Full-panel messages: all clear, setup */
+.msg { display: flex; align-items: center; background: var(--surface-raised); border-radius: var(--radius-md); min-height: 0; }
+.s .msg { padding: 20px 28px; gap: 28px; }
+.xl .msg { padding: 40px 64px; gap: 64px; }
+.msg-mark { flex: none; }
+.msg-mark path { fill: none; stroke: var(--mint); stroke-width: var(--stroke-mark); stroke-linecap: round; stroke-linejoin: round; }
+.msg-copy { display: flex; flex-direction: column; min-width: 0; }
+.s .msg-copy { gap: 8px; }
+.xl .msg-copy { gap: 16px; }
+.msg-copy .hand { font-size: 56px; }
+.xl .msg-copy .hand { font-size: 80px; }
+.msg-title { font-weight: 500; }
+.s .msg-title { font-size: 30px; line-height: 38px; }
+.xl .msg-title { font-size: 44px; line-height: 54px; }
+.msg-sub { color: var(--ink-muted); }
+.s .msg-sub { font-size: 22px; line-height: 28px; }
+.xl .msg-sub { font-size: 28px; line-height: 38px; }
+.steps { list-style: none; margin: 0; padding: 0; counter-reset: step; display: flex; flex-direction: column; }
+.s .steps { gap: 6px; }
+.xl .steps { gap: 18px; margin-top: 8px; }
+.steps li { counter-increment: step; display: grid; grid-template-columns: auto 1fr; align-items: baseline; color: var(--ink-muted); }
+.s .steps li { font-size: 22px; line-height: 28px; gap: 12px; }
+.xl .steps li { font-size: 28px; line-height: 38px; gap: 20px; }
+.steps li::before { content: counter(step); font-family: var(--font-hand); color: var(--mint); }
+.s .steps li::before { font-size: 32px; }
+.xl .steps li::before { font-size: 44px; }
+.steps b { color: var(--ink); font-weight: 500; }
+.xl .msg-aside { margin-left: auto; align-self: stretch; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding-left: 64px; border-left: var(--stroke-panel) solid var(--line); min-width: 560px; }
+.s .msg-aside { display: none; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 12px 24px; font-size: 26px; line-height: 34px; }
+.kv dt { color: var(--ink-muted); }
+.kv dd { margin: 0; font-family: var(--font-mono); font-size: 24px; color: var(--ink); }
+</style>
+</head>
+<body>
+<main class="w" id="w" aria-live="polite"></main>
+
+<script src="shared/dates.js"></script>
+<script src="shared/icue.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Config ---------- */
+  var CONFIG = {
+    refreshMs: 60000,
+    completeHoldMs: 1000,     /* how long the ticked state shows before the task leaves */
+    leaveMs: 260,
+    xlBreakpoint: 1600,       /* widths at or above this use the extra-large layout */
+    maxFiles: 150,
+    requestTimeoutMs: 6000
+  };
+  var setting = EdgeIcue.setting;
+
+  /* ---------- Hand-drawn paths (Edge Ink mark set) ---------- */
+  var P = {
+    box: 'M2 2.4 C5 1.6, 9 1.8, 10.3 2.3 C10.6 5, 10.4 8, 10 10 C7 10.5, 4 10.3, 1.8 9.8 C1.5 7, 1.7 4, 2 2.4Z',
+    tick: 'M2.6 6.4 L5.2 9 L10.6 2.4',
+    circle: 'M8 15 C 8 4, 120 2, 124 13 C 128 25, 20 28, 6 18',
+    bigTick: 'M6 34 L22 50 L58 10',
+    arrow: 'M2 8 C10 6, 22 9, 30 7 M25 3 L31 7 L26 11.5'
+  };
+  function cbSvg() {
+    return '<svg viewBox="0 0 12 12" aria-hidden="true"><path class="box" d="' + P.box + '" vector-effect="non-scaling-stroke"/><path class="tick" d="' + P.tick + '" vector-effect="non-scaling-stroke"/></svg>';
+  }
+  function prioSvg(p, size) {
+    var s = size || 22;
+    var d = p === 'high' ? 'M3 12 L9 6 L15 12 M3 18 L9 12 L15 18' : 'M3 15 L9 9 L15 15';
+    return '<svg class="prio ' + (p === 'high' ? 'high' : 'med') + '" width="' + s + '" height="' + s + '" viewBox="0 0 18 22" role="img" aria-label="' + (p === 'high' ? 'High priority' : 'Medium priority') + '"><path d="' + d + '"/></svg>';
+  }
+  function ring(inner) {
+    return '<span class="ring">' + inner + '<svg viewBox="0 0 130 30" preserveAspectRatio="none" aria-hidden="true"><path d="' + P.circle + '" vector-effect="non-scaling-stroke"/></svg></span>';
+  }
+
+  /* ---------- Dates ---------- */
+  var iso = EdgeDates.iso, fmtDate = EdgeDates.fmtDate, daysBetween = EdgeDates.daysBetween, hhmm = EdgeDates.hhmm;
+
+  /* ---------- Parsing Obsidian Tasks lines ---------- */
+  var TASK_RE = /^(\s*)[-*+] \[ \] (.+)$/;
+  var DATE_FIELDS = { due: '\u{1F4C5}', scheduled: '⏳', start: '\u{1F6EB}' };
+  var PRIO = { '\u{1F53A}': 'high', '⏫': 'high', '\u{1F53C}': 'med', '\u{1F53D}': 'low', '⏬': 'low' };
+  var FIELD_STRIP = /(?:\u{1F4C5}|⏳|\u{1F6EB}|➕|✅|❌)️?\s*\d{4}-\d{2}-\d{2}/gu;
+  var RECUR_STRIP = /\u{1F501}️?[^\u{1F4C5}⏳\u{1F6EB}➕✅❌\u{1F53A}⏫\u{1F53C}\u{1F53D}⏬]*/gu;
+  var PRIO_STRIP = /[\u{1F53A}⏫\u{1F53C}\u{1F53D}⏬]️?/gu;
+
+  function shortName(full) {
+    var parts = full.trim().split(/\s+/);
+    if (parts.length < 2) return full.trim();
+    var last = parts.slice(1).join(' ');
+    var initials = last.split('-').map(function (p) { return p.charAt(0).toUpperCase(); }).join('-');
+    return parts[0] + ' ' + initials;
+  }
+  function noteLabel(path, today) {
+    var segs = path.replace(/\.md$/i, '').split('/');
+    var base = segs.pop();
+    var folder = segs.length ? segs[segs.length - 1] : '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(base)) return (folder ? folder + ' · ' : '') + fmtDate(base, today);
+    return base;
+  }
+
+  function parseTask(raw, path, line, people, today) {
+    var m = TASK_RE.exec(raw); if (!m) return null;
+    var body = m[2];
+    var t = { id: path + '#' + line, path: path, line: line, raw: raw, priority: 'none', due: null, scheduled: null, people: [], recurring: /\u{1F501}/u.test(body) };
+    Object.keys(DATE_FIELDS).forEach(function (k) {
+      var r = new RegExp(DATE_FIELDS[k] + '\\uFE0F?\\s*(\\d{4}-\\d{2}-\\d{2})', 'u').exec(body);
+      if (r) t[k] = r[1];
+    });
+    for (var e in PRIO) if (body.indexOf(e) !== -1) { t.priority = PRIO[e]; break; }
+    var text = body.replace(FIELD_STRIP, '').replace(RECUR_STRIP, '').replace(PRIO_STRIP, '');
+    text = text.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, function (all, target, alias) {
+      var name = target.split('/').pop().replace(/\.md$/i, '');
+      if (people[name.toLowerCase()] || target.indexOf(setting('peopleFolder', 'People') + '/') === 0) { t.people.push(shortName(alias || name)); return ''; }
+      return alias || name;
+    });
+    text = text.replace(/(^|\s)@([A-Z][\w'-]*(?:\s[A-Z][\w'-]*)?)/g, function (all, sp, name) { t.people.push(shortName(name)); return sp; });
+    text = text.replace(/\s#[\w/-]+/g, '').replace(/\s\^[\w-]+\s*$/, '')
+      .replace(/\s+[-–—,]\s*(?=[-–—,]|$)/g, '').replace(/\s{2,}/g, ' ').trim()
+      .replace(/[\s\-–—,]+$/, '');
+    t.text = text;
+    t.note = noteLabel(path, today);
+    t.overdue = !!(t.due && t.due < iso(today));
+    t.dueToday = t.due === iso(today);
+    t.overdueDays = t.overdue ? daysBetween(t.due, iso(today)) : 0;
+    return t;
+  }
+
+  function selectAndSort(tasks) {
+    var rank = { high: 0, med: 1 };
+    return tasks.filter(function (t) { return t.overdue || t.priority === 'high' || t.priority === 'med'; })
+      .sort(function (a, b) {
+        if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
+        var ad = a.due || '9999', bd = b.due || '9999';
+        if (ad !== bd) return ad < bd ? -1 : 1;
+        var ar = rank[a.priority] != null ? rank[a.priority] : 2, br = rank[b.priority] != null ? rank[b.priority] : 2;
+        if (ar !== br) return ar - br;
+        return a.id < b.id ? -1 : 1;
+      });
+  }
+
+  /* ---------- Obsidian Local REST API ---------- */
+  function api(path, opts) {
+    opts = opts || {};
+    var ctl = new AbortController();
+    var timer = setTimeout(function () { ctl.abort(); }, CONFIG.requestTimeoutMs);
+    var headers = Object.assign({ Authorization: 'Bearer ' + setting('apiKey', '') }, opts.headers || {});
+    return fetch(setting('apiUrl', 'http://127.0.0.1:27123').replace(/\/$/, '') + path, { method: opts.method || 'GET', headers: headers, body: opts.body, signal: ctl.signal })
+      .then(function (res) {
+        clearTimeout(timer);
+        if (res.status === 401 || res.status === 403) { var e = new Error('auth'); e.kind = 'auth'; throw e; }
+        if (!res.ok) { var e2 = new Error('http ' + res.status); e2.kind = 'http'; throw e2; }
+        return res;
+      }, function (err) { clearTimeout(timer); var e = new Error('offline'); e.kind = 'offline'; e.cause = err; throw e; });
+  }
+  function encPath(p) { return p.split('/').map(encodeURIComponent).join('/'); }
+
+  function loadPeople() {
+    var folder = setting('peopleFolder', 'People');
+    return api('/vault/' + encPath(folder) + '/', { headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        var map = {};
+        (j.files || []).forEach(function (f) { if (/\.md$/i.test(f)) map[f.replace(/\.md$/i, '').split('/').pop().toLowerCase()] = true; });
+        return map;
+      })
+      .catch(function (e) { if (e.kind === 'auth' || e.kind === 'offline') throw e; return {}; });
+  }
+
+  function searchFiles(q) {
+    return api('/search/simple/?contextLength=1&query=' + encodeURIComponent(q), { method: 'POST' })
+      .then(function (r) { return r.json(); })
+      .then(function (rows) { return rows.map(function (r) { return r.filename; }); });
+  }
+
+  function fetchTasks(today) {
+    return loadPeople().then(function (people) {
+      /* Files containing a high/medium priority marker or any due date (for overdue tasks of any priority). */
+      return Promise.all(['⏫', '\u{1F53A}', '\u{1F53C}', '\u{1F4C5}'].map(searchFiles)).then(function (lists) {
+        var seen = {}, files = [];
+        lists.forEach(function (l) { l.forEach(function (f) { if (!seen[f]) { seen[f] = 1; files.push(f); } }); });
+        files = files.slice(0, CONFIG.maxFiles);
+        var out = [], i = 0;
+        function worker() {
+          if (i >= files.length) return Promise.resolve();
+          var f = files[i++];
+          return api('/vault/' + encPath(f), { headers: { Accept: 'text/markdown' } })
+            .then(function (r) { return r.text(); })
+            .then(function (md) {
+              md.split(/\r?\n/).forEach(function (line, n) { var t = parseTask(line, f, n, people, today); if (t) out.push(t); });
+            }, function (e) { if (e.kind === 'auth' || e.kind === 'offline') throw e; })
+            .then(worker);
+        }
+        return Promise.all([worker(), worker(), worker(), worker()]).then(function () { return selectAndSort(out); });
+      });
+    });
+  }
+
+  /* Ticks the exact line in its note (Tasks plugin convention: [x] plus a done date). */
+  function completeRemote(t) {
+    return api('/vault/' + encPath(t.path), { headers: { Accept: 'text/markdown' } })
+      .then(function (r) { return r.text(); })
+      .then(function (md) {
+        var nl = md.indexOf('\r\n') !== -1 ? '\r\n' : '\n';
+        var lines = md.split(/\r?\n/);
+        var idx = lines[t.line] === t.raw ? t.line : lines.indexOf(t.raw);
+        if (idx === -1) { var e = new Error('moved'); e.kind = 'moved'; throw e; }
+        lines[idx] = lines[idx].replace('[ ]', '[x]') + ' ✅ ' + iso(new Date());
+        return api('/vault/' + encPath(t.path), { method: 'PUT', headers: { 'Content-Type': 'text/markdown' }, body: lines.join(nl) });
+      });
+  }
+  function openRemote(t) { return api('/open/' + encPath(t.path), { method: 'POST' }); }
+
+  /* ---------- State ---------- */
+  var S = {
+    mode: 'loading',        /* loading | normal | clear | offline | setup | auth */
+    tasks: [],
+    updated: null,
+    today: new Date(),
+    demo: null,
+    busy: {},
+    flash: ''
+  };
+  var root = document.getElementById('w');
+
+  function size() { return (S.forceSize || (window.innerWidth >= CONFIG.xlBreakpoint ? 'xl' : 's')); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  /* ---------- Rendering ---------- */
+  function dueHtml(t, opts) {
+    var xl = opts && opts.xl, emph = opts && opts.emph;
+    if (t.due) {
+      var label = (xl ? 'Due ' : '') + fmtDate(t.due, S.today);
+      if (t.overdue) {
+        var h = '<span class="meta-item danger num">' + esc(label) + '</span>';
+        return emph ? ring(h) : h;
+      }
+      if (t.dueToday) return '<span class="meta-item warn num">' + (xl ? 'Due today' : 'Today') + '</span>';
+      return '<span class="meta-item num">' + esc(label) + '</span>';
+    }
+    if (t.scheduled) return '<span class="meta-item num">' + (xl ? 'Scheduled ' : '⏳ ') + esc(fmtDate(t.scheduled, S.today)) + '</span>';
+    return '';
+  }
+
+  function nextHtml(t, sz) {
+    var xl = sz === 'xl';
+    var disabled = S.mode === 'offline';
+    var badge = t.overdue
+      ? '<span class="badge danger"><span class="dot"></span><span class="num">' + t.overdueDays + (xl ? (t.overdueDays === 1 ? ' day' : ' days') : 'd') + '</span> overdue</span>'
+      : (t.dueToday ? '<span class="badge warn"><span class="dot"></span>Due today</span>' : '');
+    var meta = [];
+    meta.push('<span class="meta-item">' + prioSvg(t.priority, xl ? 28 : 22) + (xl ? (t.priority === 'high' ? 'High' : t.priority === 'med' ? 'Medium' : '') : '') + '</span>');
+    var due = dueHtml(t, { xl: xl, emph: xl && t.overdue });
+    if (due) meta.push(due);
+    if (xl && t.due && t.scheduled) meta.push('<span class="meta-item num">Scheduled ' + esc(fmtDate(t.scheduled, S.today)) + '</span>');
+    if (t.people.length) meta.push(xl
+      ? '<span class="people">' + t.people.map(function (p) { return '<span class="chip">' + esc(p) + '</span>'; }).join('') + '</span>'
+      : '<span class="meta-item">' + esc(t.people.join(', ')) + '</span>');
+    meta.push(xl
+      ? '<button class="note-link" data-open="' + esc(t.id) + '"' + (disabled ? ' disabled' : '') + '>' + esc(t.note) + ' <svg width="40" height="14" viewBox="0 0 40 14" aria-hidden="true"><path d="' + P.arrow + '" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></button>'
+      : '<span class="meta-item note">' + esc(t.note) + '</span>');
+    return '<section class="next' + (t.overdue ? ' over' : '') + '" data-id="' + esc(t.id) + '" aria-label="Next up">' +
+      '<div class="next-head"><span class="hand">next up</span>' + badge + '</div>' +
+      '<div class="next-body">' +
+        '<button class="cb cb-l" data-done="' + esc(t.id) + '"' + (disabled ? ' disabled' : '') + ' aria-label="Complete: ' + esc(t.text) + '">' + cbSvg() + '</button>' +
+        '<button class="next-text" data-open="' + esc(t.id) + '"' + (disabled ? ' disabled' : '') + '>' + esc(t.text) + '</button>' +
+      '</div>' +
+      '<div class="next-meta">' + meta.join('') + '</div>' +
+    '</section>';
+  }
+
+  function rowHtml(t, sz) {
+    var xl = sz === 'xl';
+    var disabled = S.mode === 'offline';
+    var meta = [prioSvg(t.priority, 20)];
+    var due = dueHtml(t, { xl: false });
+    if (due) meta.push(due);
+    if (t.people.length) meta.push('<span>' + esc(xl ? t.people.join(', ') : t.people[0] + (t.people.length > 1 ? ' +' + (t.people.length - 1) : '')) + '</span>');
+    meta.push('<span class="note">' + esc(t.note) + '</span>');
+    return '<li class="row' + (t.overdue ? ' over' : '') + '" data-id="' + esc(t.id) + '">' +
+      '<button class="cb cb-m" data-done="' + esc(t.id) + '"' + (disabled ? ' disabled' : '') + ' aria-label="Complete: ' + esc(t.text) + '">' + cbSvg() + '</button>' +
+      '<button class="row-main" data-open="' + esc(t.id) + '"' + (disabled ? ' disabled' : '') + '>' +
+        '<span class="row-text">' + esc(t.text) + '</span>' +
+        '<span class="row-meta">' + meta.join('') + '</span>' +
+      '</button></li>';
+  }
+
+  function footHtml() {
+    var left = (S.mode === 'setup' || S.mode === 'auth') ? '<span>API key needed</span>'
+      : S.updated ? '<span>' + (S.mode === 'offline' ? 'last updated ' : 'updated ') + '<span class="num">' + hhmm(S.updated) + '</span></span>' : '<span>connecting\u2026</span>';
+    var right = '';
+    if (S.flash) right = '<span class="badge warn"><span class="dot"></span>' + esc(S.flash) + '</span>';
+    else if (S.mode === 'offline') right = '<span class="badge warn"><span class="dot"></span>Obsidian not running</span>';
+    else if (S.mode === 'setup' || S.mode === 'auth') right = '<span class="badge neutral"><span class="dot"></span>Not connected</span>';
+    else if (S.mode === 'normal' && size() === 'xl') {
+      var over = S.tasks.filter(function (t) { return t.overdue; }).length;
+      right = '<span><span class="num">' + S.tasks.length + '</span> open' + (over ? ' · <span class="danger"><span class="num">' + over + '</span> overdue</span>' : '') + '</span>';
+    }
+    return '<footer class="foot span">' + left + right + '</footer>';
+  }
+
+  function clearHtml(sz) {
+    var xl = sz === 'xl';
+    return '<section class="msg span" aria-label="All clear">' +
+      '<svg class="msg-mark" width="' + (xl ? 120 : 76) + '" height="' + (xl ? 120 : 76) + '" viewBox="0 0 64 60" aria-hidden="true"><path d="' + P.bigTick + '"/></svg>' +
+      '<div class="msg-copy"><span class="hand">all clear</span>' +
+      '<span class="msg-title">No high-priority or overdue tasks</span>' +
+      '<span class="msg-sub">New ones appear here as soon as they’re added in Obsidian.</span></div>' +
+    '</section>';
+  }
+
+  function unreachableHtml(sz) {
+    return '<section class="msg span" aria-label="Obsidian not running">' +
+      '<div class="msg-copy"><span class="hand muted">waiting</span>' +
+      '<span class="msg-title">Obsidian isn\u2019t running</span>' +
+      '<span class="msg-sub">Open Obsidian and your tasks will load here. Checking every minute.</span></div>' +
+    '</section>';
+  }
+
+  function setupHtml(sz) {
+    var auth = S.mode === 'auth';
+    return '<section class="msg span" aria-label="Set up">' +
+      '<div class="msg-copy"><span class="hand">' + (auth ? 'check key' : 'set up') + '</span>' +
+      '<span class="msg-title">' + (auth ? 'Obsidian didn’t accept the API key' : 'Connect Focus to Obsidian') + '</span>' +
+      '<ol class="steps">' +
+        '<li><span>In Obsidian, install <b>Local REST API</b>, turn on its HTTP server and copy the API key.</span></li>' +
+        '<li><span>In iCUE, open this widget’s settings and paste it into <b>Obsidian API key</b>.</span></li>' +
+      '</ol></div>' +
+      '<div class="msg-aside"><dl class="kv">' +
+        '<dt>Plugin</dt><dd>Local REST API</dd>' +
+        '<dt>Address</dt><dd>' + esc(setting('apiUrl', 'http://127.0.0.1:27123')) + '</dd>' +
+        '<dt>Shows</dt><dd>High, medium, overdue</dd>' +
+      '</dl></div>' +
+    '</section>';
+  }
+
+  function render(opts) {
+    var sz = size();
+    root.dataset.size = sz;
+    root.className = 'w ' + sz;
+    root.dataset.state = S.mode;
+    var h = '';
+    if (S.mode === 'setup' || S.mode === 'auth') h = setupHtml(sz);
+    else if (S.mode === 'loading') h = '<section class="msg span"><div class="msg-copy"><span class="hand muted">loading</span></div></section>';
+    else if (S.mode === 'offline' && !S.updated) h = unreachableHtml(sz);
+    else if (!S.tasks.length) h = clearHtml(sz);
+    else {
+      var rest = S.tasks.slice(1);
+      h = nextHtml(S.tasks[0], sz) +
+        '<section class="then" aria-label="Then">' +
+          '<div class="then-head"><span class="lead"><span class="hand">then</span><span class="count">· <span class="num">' + rest.length + '</span> more</span></span></div>' +
+          '<ul class="list">' + rest.map(function (t) { return rowHtml(t, sz); }).join('') + '</ul>' +
+        '</section>';
+    }
+    root.innerHTML = h + footHtml();
+    if (opts && opts.arrive) { var n = root.querySelector('.next'); if (n) n.classList.add('arrive'); }
+  }
+
+  /* ---------- Interactions ---------- */
+  function find(id) { for (var i = 0; i < S.tasks.length; i++) if (S.tasks[i].id === id) return S.tasks[i]; return null; }
+
+  function complete(id) {
+    if (S.busy[id] || S.mode === 'offline') return;
+    var t = find(id); if (!t) return;
+    var el = root.querySelector('[data-id="' + cssEsc(id) + '"]');
+    if (!el) return;
+    S.busy[id] = true;
+    var isNext = S.tasks[0] && S.tasks[0].id === id;
+    el.classList.add('done');
+    if (isNext) { var lab = el.querySelector('.next-head .hand'); if (lab) lab.textContent = 'done'; }
+    var first = root.querySelector('.list .row');
+    if (isNext && first) first.classList.add('promote');
+    var remote = S.demo ? Promise.resolve() : completeRemote(t);
+    var hold = new Promise(function (r) { setTimeout(r, CONFIG.completeHoldMs); });
+    Promise.all([remote, hold]).then(function () {
+      if (!isNext) el.style.maxHeight = el.offsetHeight + 'px';
+      requestAnimationFrame(function () { el.classList.add('leaving'); });
+      setTimeout(function () {
+        S.tasks = S.tasks.filter(function (x) { return x.id !== id; });
+        delete S.busy[id];
+        render({ arrive: isNext });
+      }, CONFIG.leaveMs);
+    }, function (err) {
+      delete S.busy[id];
+      el.classList.remove('done');
+      if (first) first.classList.remove('promote');
+      if (err && err.kind === 'offline') { S.mode = 'offline'; render(); return; }
+      showFlash(err && err.kind === 'moved' ? 'Task changed in Obsidian. Refreshing' : 'Couldn’t update Obsidian. Try again');
+      if (err && err.kind === 'moved') refresh();
+    });
+  }
+  function open(id) {
+    var t = find(id); if (!t || S.mode === 'offline' || S.demo) return;
+    openRemote(t).catch(function (e) { if (e.kind === 'offline') { S.mode = 'offline'; render(); } else showFlash('Couldn’t open the note'); });
+  }
+  function showFlash(msg) { S.flash = msg; render(); setTimeout(function () { S.flash = ''; render(); }, 4000); }
+  function cssEsc(s) { return (window.CSS && CSS.escape) ? CSS.escape(s) : s.replace(/"/g, '\\"'); }
+
+  root.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b || b.disabled) return;
+    if (b.dataset.done) complete(b.dataset.done);
+    else if (b.dataset.open) open(b.dataset.open);
+  });
+
+  /* ---------- Data lifecycle ---------- */
+  function saveCache() { try { localStorage.setItem('focus.cache', JSON.stringify({ tasks: S.tasks, updated: S.updated && S.updated.getTime() })); } catch (e) {} }
+  function loadCache() {
+    try { var c = JSON.parse(localStorage.getItem('focus.cache') || 'null'); if (c && c.tasks) { S.tasks = c.tasks; S.updated = c.updated ? new Date(c.updated) : null; return true; } } catch (e) {}
+    return false;
+  }
+
+  var timer = null;
+  function refresh() {
+    if (S.demo) return;
+    if (!setting('apiKey', '')) { S.mode = 'setup'; render(); return; }
+    if (Object.keys(S.busy).length) return; /* never yank the list mid-animation */
+    S.today = new Date();
+    fetchTasks(S.today).then(function (tasks) {
+      if (Object.keys(S.busy).length) return;
+      S.tasks = tasks; S.updated = new Date(); S.mode = tasks.length ? 'normal' : 'clear';
+      saveCache(); render();
+    }, function (e) {
+      if (e.kind === 'auth') S.mode = 'auth';
+      else S.mode = 'offline';
+      render();
+    });
+  }
+  var started = false;
+  function start() {
+    if (started) { refresh(); return; } started = true;
+    clearInterval(timer);
+    if (!S.demo && loadCache()) { S.mode = S.tasks.length ? 'normal' : 'clear'; }
+    render(); refresh();
+    if (!S.demo) timer = setInterval(refresh, CONFIG.refreshMs);
+  }
+
+  /* ---------- Demo mode (design reviews only): index.html?demo=normal|completing|clear|offline|setup&size=s|xl ---------- */
+  var DEMO_TODAY = new Date(2026, 9, 31);
+  var DEMO_LINES = [
+    ['Daily Notes/2026-10-07.md', '- [ ] Provide work needed for rolling out Python (L&D, codify rules, service template, operating in production) ⏫ \u{1F4C5} 2026-10-09'],
+    ['Daily Notes/2026-10-13.md', '- [ ] Inference spend - show individual inference spend, manager and down - [[Tom Mussett]] ⏫ \u{1F4C5} 2026-10-14'],
+    ['Projects/AI Gateway.md', '- [ ] Cost attribution model for inference spend - [[Matt Kerr-Bright]], [[Dave Sansum]] ⏫ \u{1F4C5} 2026-10-20'],
+    ['Eng Leadership/Group Engineering.md', '- [ ] Agree Q1 platform roadmap priorities with VPs - [[Austen Constable]] ⏫ \u{1F4C5} 2026-11-03'],
+    ['Daily Notes/2026-10-29.md', '- [ ] Review LiteLLM rate-limit policy before wider rollout - [[Robert Small]] \u{1F53C} \u{1F4C5} 2026-11-04'],
+    ['Projects/Community SSO.md', '- [ ] Provide solution to Community SSO - Gainsight CC, aiming for January launch - [[James Smith]] \u{1F53C} ⏳ 2026-11-05'],
+    ['Daily Notes/2026-10-30.md', '- [ ] Draft India conference session outline: impact of AI in R&D ⏫ \u{1F4C5} 2026-11-06'],
+    ['Eng Leadership/1-1s.md', '- [ ] Write up feedback for Stephen ahead of review - [[Stephen Higgins]] \u{1F53C} \u{1F4C5} 2026-11-07'],
+    ['Projects/Knowledge System.md', '- [ ] Sign off ADR template changes for the MCP knowledge server - [[Beata Lipska]] \u{1F53C} \u{1F4C5} 2026-11-10'],
+    ['Projects/Factory Harness.md', '- [ ] Factory Harness Slack app: decide on approval flow for production deploys ⏫ \u{1F4C5} 2026-11-12'],
+    ['Daily Notes/2026-10-28.md', '- [ ] Book architecture review for the n8n internal automations \u{1F53C} \u{1F4C5} 2026-11-14'],
+    ['Eng Leadership/Hiring.md', '- [ ] Approve Head of Platform job spec - [[George Chacko Manchimala]] \u{1F53C} \u{1F4C5} 2026-11-18'],
+    ['Projects/Claude Apps Gateway.md', '- [ ] Rollout comms plan for Claude Apps Gateway to all engineering - [[Tom Mussett]] \u{1F53C} ⏳ 2026-11-20'],
+    ['Finance/CAPEX.md', '- [ ] Show CAPEX solution and handover - [[Matt Kerr-Bright]], [[Dave Sansum]], [[Austen Constable]] ⏫'],
+    ['Daily Notes/2026-10-21.md', '- [ ] Tidy up GitHub Enterprise org owners list \u{1F53C}']
+  ];
+  var DEMO_PEOPLE = { 'tom mussett': 1, 'matt kerr-bright': 1, 'dave sansum': 1, 'austen constable': 1, 'robert small': 1, 'james smith': 1, 'stephen higgins': 1, 'beata lipska': 1, 'george chacko manchimala': 1 };
+  function demoTasks() {
+    return selectAndSort(DEMO_LINES.map(function (l, i) { return parseTask(l[1], l[0], i + 4, DEMO_PEOPLE, DEMO_TODAY); }));
+  }
+  function runDemo(state, sz) {
+    S.demo = state; S.today = DEMO_TODAY; S.updated = new Date(2026, 9, 31, 14, 32);
+    if (sz) S.forceSize = sz;
+    S.tasks = demoTasks();
+    S.mode = { normal: 'normal', completing: 'normal', clear: 'clear', offline: 'offline', setup: 'setup' }[state] || 'normal';
+    if (state === 'clear') S.tasks = [];
+    if (state === 'setup') S.updated = null;
+    render();
+    if (state === 'completing') {
+      /* Frozen mid-animation for the design board: tick drawn, text struck, next task promoted. */
+      var n = root.querySelector('.next'); n.classList.add('done'); n.querySelector('.next-head .hand').textContent = 'done';
+      var f = root.querySelector('.list .row'); if (f) f.classList.add('promote');
+      S.busy[S.tasks[0].id] = true;
+    }
+  }
+
+  /* ---------- Boot ---------- */
+  var q = /[?&]demo=(\w+)/.exec(location.search);
+  var qs = /[?&]size=(s|xl)/.exec(location.search);
+  window.addEventListener('resize', function () { render(); });
+  if (q) { runDemo(q[1], qs && qs[1]); }
+  else {
+    EdgeIcue.onReady(start);
+  }
+})();
+</script>
+</body>
+</html>
