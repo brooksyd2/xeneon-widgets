@@ -24,8 +24,11 @@ function pkce() {
   return { verifier, challenge: crypto.createHash('sha256').update(verifier).digest('base64url') };
 }
 
+// Network failures reject fetch with a raw TypeError; report them as Google being unreachable.
+const safeFetch = (fetch, ...args) => fetch(...args).catch(() => { throw new HttpError(502, 'google'); });
+
 async function tokenRequest(fetch, params) {
-  const res = await fetch(TOKEN_URL, {
+  const res = await safeFetch(fetch, TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(params).toString(),
@@ -43,7 +46,7 @@ async function exchangeCode({ code, verifier, redirectUri, clientId, clientSecre
     grant_type: 'authorization_code', code, code_verifier: verifier, redirect_uri: redirectUri,
     client_id: clientId, client_secret: clientSecret,
   });
-  const res = await fetch(PROFILE_URL, { headers: { Authorization: `Bearer ${t.access_token}` } });
+  const res = await safeFetch(fetch, PROFILE_URL, { headers: { Authorization: `Bearer ${t.access_token}` } });
   if (!res.ok) throw new HttpError(502, 'google');
   const { emailAddress } = await res.json();
   return { refreshToken: t.refresh_token, accessToken: t.access_token, expiresAt: now() + t.expires_in * 1000, email: emailAddress };
@@ -63,7 +66,7 @@ function createAuth({ dir, fetch = globalThis.fetch, now = Date.now, secret = re
       const account = needAccount();
       const { clientId, clientSecret } = loadConfig(dir);
       const t = await tokenRequest(fetch, {
-        grant_type: 'refresh_token', refresh_token: await secret.unprotect(account.refreshToken),
+        grant_type: 'refresh_token', refresh_token: await secret.unprotect(account.refreshToken).catch(() => { throw new HttpError(503, 'signed_out'); }),
         client_id: clientId, client_secret: clientSecret,
       });
       cached = { token: t.access_token, expiresAt: now() + t.expires_in * 1000 };
@@ -75,8 +78,10 @@ function createAuth({ dir, fetch = globalThis.fetch, now = Date.now, secret = re
   };
 }
 
-function openUrl(url) {
-  spawn('rundll32', ['url.dll,FileProtocolHandler', url], { detached: true, stdio: 'ignore' }).unref();
+function openUrl(url, spawnFn = spawn) {
+  const child = spawnFn('rundll32', ['url.dll,FileProtocolHandler', url], { detached: true, stdio: 'ignore' });
+  child.on('error', () => {}); // missing binary arrives as an async event; the printed URL is the fallback
+  child.unref();
 }
 
 async function signin({ dir, openBrowser = openUrl, fetch = globalThis.fetch, secret = realSecret, log = console.log }) {
@@ -114,4 +119,4 @@ async function signin({ dir, openBrowser = openUrl, fetch = globalThis.fetch, se
   }
 }
 
-module.exports = { authUrl, pkce, exchangeCode, createAuth, signin };
+module.exports = { authUrl, pkce, exchangeCode, createAuth, signin, openUrl };

@@ -4,7 +4,8 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { authUrl, pkce, exchangeCode, createAuth } = require('../../companion/google-auth');
+const { EventEmitter } = require('node:events');
+const { authUrl, pkce, exchangeCode, createAuth, openUrl } = require('../../companion/google-auth');
 
 const SCOPES = 'https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/calendar.readonly';
 const secret = { protect: async (t) => 'P:' + t, unprotect: async (t) => t.slice(2) };
@@ -96,4 +97,23 @@ test('signedIn and email reflect accounts.json', async () => {
   const auth = createAuth({ dir: setup(), fetch: async () => {}, now: () => 0, secret });
   assert.strictEqual(await auth.signedIn(), true);
   assert.strictEqual(auth.email(), 'a@b.c');
+});
+
+test('network failure maps to 502 google', async () => {
+  const fetch = async () => { throw new TypeError('fetch failed'); };
+  const auth = createAuth({ dir: setup(), fetch, now: () => 0, secret });
+  await assert.rejects(auth.getAccessToken(), { status: 502, kind: 'google' });
+  await assert.rejects(exchangeCode({ code: 'c', verifier: 'v', redirectUri: 'r', clientId: 'a', clientSecret: 'b', fetch }), { status: 502, kind: 'google' });
+});
+
+test('unprotect failure maps to 503 signed_out', async () => {
+  const bad = { ...secret, unprotect: async () => { throw new Error('DPAPI failed'); } };
+  const auth = createAuth({ dir: setup(), fetch: async () => assert.fail('no fetch'), now: () => 0, secret: bad });
+  await assert.rejects(auth.getAccessToken(), { status: 503, kind: 'signed_out' });
+});
+
+test('openUrl survives a spawn error event', () => {
+  const child = Object.assign(new EventEmitter(), { unref() {} });
+  openUrl('https://example.test', () => child);
+  assert.doesNotThrow(() => child.emit('error', new Error('ENOENT')));
 });
