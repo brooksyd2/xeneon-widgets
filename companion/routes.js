@@ -1,8 +1,10 @@
 const { HttpError } = require('./server');
-const { dayRange, listEvents } = require('./calendar');
+const { dayRange, listEvents, toEvent } = require('./calendar');
+const { gcall } = require('./google-api');
+const realLauncher = require('./launcher');
 const { listInbox, getBody, modifyThread } = require('./gmail');
 
-function makeRoutes({ auth, fetch, now = Date.now, launcher }) { // launcher: used by Task 4 (join)
+function makeRoutes({ auth, fetch, now = Date.now, launcher = realLauncher }) {
   // Run fn(token); on a Google 401 refresh once, and treat a second 401 as signed out.
   async function withToken(fn) {
     try { return await fn(await auth.getAccessToken()); } catch (e) {
@@ -40,6 +42,16 @@ function makeRoutes({ auth, fetch, now = Date.now, launcher }) { // launcher: us
       method: 'GET', path: '/messages/:id', handler: async (req, { params }) => {
         const mid = id(params);
         return { json: { body: await withToken((token) => getBody({ token, fetch, id: mid })) } };
+      },
+    },
+    {
+      method: 'POST', path: '/events/:id/join', handler: async (req, { params }) => {
+        const eid = id(params);
+        const event = toEvent(await withToken((token) => gcall(fetch, token, `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eid)}`)));
+        if (!event.meetUrl || !realLauncher.isAllowedUrl(event.meetUrl) || Date.parse(event.end) <= now()) throw new HttpError(400, 'bad_request');
+        launcher.openUrl(event.meetUrl);
+        try { launcher.openUrl(launcher.granolaUrl(eid)); } catch (e) { console.error(`Granola open failed: ${e.message}`); }
+        return { json: { ok: true } };
       },
     },
     { method: 'POST', path: '/messages/:id/archive', handler: modify('INBOX') },

@@ -69,3 +69,35 @@ test('invalid_grant from auth surfaces as 503 signed_out; other Google failures 
   await assert.rejects(out.call('GET', '/state'), { status: 503, kind: 'signed_out' });
   await assert.rejects(setup(async () => reply({}, 500)).call('GET', '/state'), { status: 502, kind: 'google' });
 });
+
+function joinSetup(event, status = 200, failGranola = false) {
+  const opened = [];
+  const launcher = { granolaUrl: (id) => 'granola://new-document?event=' + id, openUrl: (u) => { if (failGranola && u.startsWith('granola')) throw new Error('boom'); opened.push(u); } };
+  const routes = makeRoutes({ auth: { getAccessToken: async () => 't', invalidate() {} }, fetch: async () => reply(event, status), now: () => NOW, launcher });
+  return { opened, join: (id = 'e1') => routes.find((r) => r.path === '/events/:id/join').handler({}, { params: { id } }) };
+}
+const meetEv = (end, extra = {}) => ({ id: 'e1', summary: 'S', start: { dateTime: '2026-10-31T09:00:00Z' }, end: { dateTime: end }, hangoutLink: 'https://meet.google.com/abc-defg-hij', ...extra });
+
+test('join opens Meet then Granola', async () => {
+  const s = joinSetup(meetEv('2026-10-31T11:00:00Z'));
+  assert.deepStrictEqual((await s.join()).json, { ok: true });
+  assert.deepStrictEqual(s.opened, ['https://meet.google.com/abc-defg-hij', 'granola://new-document?event=e1']);
+});
+
+test('join of an ended, Meet-less or non-Meet event is 400 and opens nothing; unknown is 404', async () => {
+  for (const ev of [meetEv('2026-10-31T10:00:00Z'), meetEv('2026-10-31T11:00:00Z', { hangoutLink: undefined }), meetEv('2026-10-31T11:00:00Z', { hangoutLink: 'https://evil.com/x' })]) {
+    const s = joinSetup(ev);
+    await assert.rejects(s.join(), { status: 400, kind: 'bad_request' });
+    assert.deepStrictEqual(s.opened, []);
+  }
+  const s = joinSetup({}, 404);
+  await assert.rejects(s.join(), { status: 404, kind: 'not_found' });
+  assert.deepStrictEqual(s.opened, []);
+});
+
+test('join still succeeds when the Granola open throws', async () => {
+  const s = joinSetup(meetEv('2026-10-31T11:00:00Z'), 200, true);
+  const err = console.error; console.error = () => {};
+  try { assert.deepStrictEqual((await s.join()).json, { ok: true }); } finally { console.error = err; }
+  assert.deepStrictEqual(s.opened, ['https://meet.google.com/abc-defg-hij']);
+});
