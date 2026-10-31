@@ -7,7 +7,7 @@ Corsair iCUE widgets for the Xeneon Edge touchscreen. Each widget is a plain HTM
 - `widgets/obsidian/`: Obsidian high-priority and overdue tasks, with tap to complete and tap to open.
 - `widgets/gmail/`: next meeting with one-tap Join, today's meetings and the Gmail Primary inbox; needs the companion.
 - `widgets/home/`: Home Assistant cameras (stills and live view), air con, heating and the coffee machine; needs the companion.
-- `companion/`: local Node service (127.0.0.1:8817) that gives widgets access to Google data; see `companion/README.md`.
+- `companion/`: local Node service (127.0.0.1:8817) that gives widgets access to Google and Home Assistant data; see `companion/README.md`.
 
 ## Layout
 

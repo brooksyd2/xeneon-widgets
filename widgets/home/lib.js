@@ -15,7 +15,7 @@
   }
 
   function heatingStatus(s) {
-    if (s.mode === 'off') return { badge: 'Off', line: 'Off' };
+    if (s.mode !== 'heat') return { badge: 'Off', line: 'Off' };
     if (s.action === 'heating') return { badge: 'Heating', line: s.target == null ? 'Heating' : 'Heating to ' + s.target.toFixed(1) + '°' };
     if (s.target > s.room) return { badge: 'Idle', line: 'Idle · set to ' + s.target.toFixed(1) + '°' };
     return { badge: 'Idle', line: 'Idle · target below room' };

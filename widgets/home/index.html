@@ -403,7 +403,7 @@ function build(){
   S.ac = j.ac.map(a => { const p = pending[a.id];
     return {...a, pending: p && !p.failed ? (p.want ? 'on' : 'off') : null, failed: !!(p && p.failed)}; });
   if (heatHold && heatHold.at && HomeLib.settle(heatHold, j.heat.target, now)!=='pending') heatHold = null;   // confirmed, or 10 s passed
-  S.heat = {...j.heat, target: heatHold ? heatHold.want : j.heat.mode==='off' ? null : j.heat.target};
+  S.heat = {...j.heat, target: heatHold ? heatHold.want : j.heat.mode!=='heat' ? null : j.heat.target};
   S.coffee = {on: j.coffee.on, mins: j.coffee.on && j.coffee.since ? HomeLib.onFor(j.coffee.since, now) : 0,
     pending: !!(coffeePending && !coffeePending.failed), failed: !!(coffeePending && coffeePending.failed)};
 }

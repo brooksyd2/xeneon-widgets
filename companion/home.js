@@ -33,7 +33,7 @@ function mapState(states) {
     }),
     ac: ENTITIES.ac.map(({ id, entity, name, big }) => {
       const s = get(entity), a = s.attributes;
-      const on = s.state !== null && s.state !== 'off';
+      const on = Object.hasOwn(MODES, s.state); // only the five known modes count as on; unavailable/unknown/missing are off
       return { id, name, big, on, mode: on ? MODES[s.state] || null : null, room: num(a.current_temperature), target: num(a.temperature) };
     }),
     heat: (() => {
@@ -63,6 +63,7 @@ function createHa({ url, token, fetch, timeoutMs = 5000 }) {
     } finally { clearTimeout(timer); }
     if (res.status === 401 || !res.ok) {
       unlisten();
+      res.body?.cancel().catch(() => {});
       throw res.status === 401 ? new HttpError(503, 'ha_unauthorised') : new HttpError(502, 'home_assistant');
     }
     if (!signal) return res;
@@ -121,7 +122,9 @@ function homeRoutes({ ha }) {
     route('POST', '/home/heating/target', async ({ body }) => {
       const entity = ENTITIES.heating;
       const s = await ha.get(`/api/states/${entity}`);
-      const temperature = validateTarget(body && body.target, { min: s.attributes.min_temp, max: s.attributes.max_temp });
+      const a = s.attributes || {};
+      if (!Number.isFinite(a.min_temp) || !Number.isFinite(a.max_temp)) throw new HttpError(502, 'home_assistant');
+      const temperature = validateTarget(body && body.target, { min: a.min_temp, max: a.max_temp });
       await ha.call('climate', 'set_temperature', { entity_id: entity, temperature, ...(s.state === 'off' && { hvac_mode: 'heat' }) });
       return ok;
     }),

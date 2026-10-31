@@ -152,3 +152,14 @@ test('unknown camera id is 404 without calling Home Assistant', async () => {
 test('camera 500 from Home Assistant maps to home_assistant', async () => {
   await assert.rejects(camera(async () => streamReply('', 'text/plain', 500), 'door', 'live').result, { status: 502, kind: 'home_assistant' });
 });
+
+test('unavailable AC is off with no mode', () => {
+  const m = mapState(states.map((s) => (s.entity_id === 'climate.snug' ? { ...s, state: 'unavailable' } : s))).ac.find((a) => a.id === 'snug');
+  assert.ok(m.on === false && m.mode === null);
+});
+
+test('heating target rejects a thermostat without limits and makes no service call', async () => {
+  const s = setup(async () => reply({ state: 'heat' }));
+  await assert.rejects(s.call('POST', '/home/heating/target', {}, { target: 18 }), { status: 502, kind: 'home_assistant' });
+  assert.strictEqual(s.calls.length, 1);
+});

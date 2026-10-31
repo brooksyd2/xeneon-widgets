@@ -63,5 +63,5 @@ The two camera routes also accept the token as `?token=<token>`, because an `<im
 ## Security
 
 - Listens on `127.0.0.1:8817` only.
-- Every request except a CORS preflight needs `Authorization: Bearer <token>`.
+- Every request except a CORS preflight needs `Authorization: Bearer <token>`, or `?token=` on the two camera routes.
 - Nothing leaves the PC except requests to Google and to Home Assistant on the LAN.

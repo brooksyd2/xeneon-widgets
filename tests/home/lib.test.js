@@ -21,6 +21,7 @@ test('stepTarget from null starts at the room rounded', () => {
   assert.equal(stepTarget(null, 1, r), 19.5);
 });
 test('heatingStatus', () => {
+  assert.deepEqual(heatingStatus({ mode: 'unavailable', room: 19.2, target: 18, action: null }), { badge: 'Off', line: 'Off' });
   assert.deepEqual(heatingStatus({ mode: 'off', room: 19.2, target: 21, action: 'idle' }), { badge: 'Off', line: 'Off' });
   assert.deepEqual(heatingStatus({ mode: 'heat', room: 19.2, target: 21, action: 'heating' }), { badge: 'Heating', line: 'Heating to 21.0°' });
   assert.deepEqual(heatingStatus({ mode: 'heat', room: 19.2, target: 21, action: 'idle' }), { badge: 'Idle', line: 'Idle · set to 21.0°' });
