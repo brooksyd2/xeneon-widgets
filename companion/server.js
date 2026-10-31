@@ -59,7 +59,8 @@ function createServer({ token, routes }) {
       }
       throw new HttpError(404, 'not_found');
     } catch (e) {
-      if (e instanceof HttpError) return send(e.status, { error: e.kind });
+      if (e && e.status && e.kind) return send(e.status, { error: e.kind });
+      console.error(e && e.message);
       send(502, { error: 'google' });
     }
   });

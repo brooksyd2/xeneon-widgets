@@ -6,6 +6,7 @@ const routes = [
   { method: 'GET', path: '/ping', handler: async () => ({ json: { pong: true } }) },
   { method: 'GET', path: '/item/:id', handler: async (req, { params }) => ({ json: params }) },
   { method: 'GET', path: '/signed-out', handler: async () => { throw new HttpError(503, 'signed_out'); } },
+  { method: 'GET', path: '/duck', handler: async () => { throw Object.assign(new Error('x'), { status: 404, kind: 'not_found' }); } },
   { method: 'GET', path: '/boom', handler: async () => { throw new Error('secret detail'); } },
 ];
 
@@ -58,4 +59,10 @@ test('HttpError maps to its status and kind; other errors to 502 google', () => 
 
 test('listen binds 127.0.0.1', () => withServer(async (base, server) => {
   assert.strictEqual(server.address().address, '127.0.0.1');
+}));
+
+test('any error with status and kind is mapped (duck-typed)', () => withServer(async (base) => {
+  const res = await fetch(`${base}/v1/duck`, auth);
+  assert.strictEqual(res.status, 404);
+  assert.deepStrictEqual(await res.json(), { error: 'not_found' });
 }));
