@@ -18,6 +18,24 @@ A small local service that the Xeneon widgets talk to for Google data (Gmail and
 
 If Internal is not available, use user type External and set the publishing status to **In production**. Google then shows a one-off "unverified app" warning at sign-in, which you can click through.
 
+## Install and auto-start
+
+1. Copy `companion/` to `C:\Users\brook\Documents\xeneon-build\companion\`.
+2. From `xeneon-build`, run `node companion` once. It creates `config.json` with the token and prints it; stop it with Ctrl+C.
+3. Put the Google client id and secret into `config.json` (see Google set-up), then run `node companion signin`.
+4. To start it at login, place a shortcut to `companion\start-hidden.vbs` in `shell:startup` (press Win+R, type `shell:startup`). The script runs `node` with no window; if wscript cannot find `node`, edit the script to use the full path to `node.exe`. Stop it from Task Manager (end the `node.exe` process).
+5. Package the widget as for Obsidian: copy `dist/gmail` to `xeneon-build\gmail`, then in `xeneon-build` run `icuewidget validate gmail` and `icuewidget package gmail`. The "translation.json is missing" warning is harmless.
+
+## Device checklist
+
+- [ ] Create the OAuth client (Internal), add it to `config.json`, and run `node companion signin` with the Arbor account.
+- [ ] Install `gmail.icuewidget`, approve permissions, and paste the token.
+- [ ] Meetings and the Primary inbox match Gmail and Calendar.
+- [ ] Archive and mark read appear in Gmail within a refresh.
+- [ ] The reading view shows a plain-text body.
+- [ ] Join opens Meet and a Granola note for that meeting (note whether Granola starts transcribing by itself).
+- [ ] Stopping the companion shows "Companion not running" with dimmed data, and it recovers when restarted.
+
 ## Where data lives
 
 `%APPDATA%\xeneon-companion\` on Windows, or the folder in `XENEON_COMPANION_DIR`. It holds `config.json` (token, client id and secret) and `accounts.json`. Never commit either file.
