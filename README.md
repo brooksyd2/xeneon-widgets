@@ -5,6 +5,7 @@ Corsair iCUE widgets for the Xeneon Edge touchscreen. Each widget is a plain HTM
 ## Widgets
 
 - `widgets/obsidian/`: Obsidian high-priority and overdue tasks, with tap to complete and tap to open.
+- `companion/`: local Node service (127.0.0.1:8817) that gives widgets access to Google data; see `companion/README.md`.
 
 ## Layout
 
