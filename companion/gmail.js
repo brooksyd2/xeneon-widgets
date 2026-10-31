@@ -52,9 +52,10 @@ async function listInbox({ token, fetch, max = 25 }) {
   const msgs = await Promise.all((list.messages || []).map((x) => {
     const p = new URLSearchParams({ format: 'metadata' });
     for (const h of ['From', 'Subject', 'Date']) p.append('metadataHeaders', h);
-    return gcall(fetch, token, `${API}/messages/${encodeURIComponent(x.id)}?${p}`);
+    // A message archived or deleted since the list call is simply dropped.
+    return gcall(fetch, token, `${API}/messages/${encodeURIComponent(x.id)}?${p}`).catch((e) => (e.kind === 'not_found' ? null : Promise.reject(e)));
   }));
-  return msgs.map(toMessage);
+  return msgs.filter(Boolean).map(toMessage);
 }
 
 function decodePart(part) {

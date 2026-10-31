@@ -66,3 +66,12 @@ test('modifyThread looks up the thread then modifies it', async () => {
   assert.ok(calls[1][0].endsWith('/threads/T1/modify'));
   assert.strictEqual(calls[1][1], '{"removeLabelIds":["INBOX"]}');
 });
+
+test('listInbox drops a message that 404s between list and get', async () => {
+  const fetch = async (u) => {
+    if (u.includes('/messages?')) return reply({ messages: [{ id: 'a' }, { id: 'b' }, { id: 'c' }] });
+    if (u.includes('/b?')) return reply({}, 404);
+    return reply({ id: u.includes('/a?') ? 'a' : 'c', threadId: 'T', internalDate: '0', payload: { headers: [] } });
+  };
+  assert.deepStrictEqual((await listInbox({ token: 't', fetch })).map((m) => m.id), ['a', 'c']);
+});
