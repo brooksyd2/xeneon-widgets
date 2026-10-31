@@ -1,6 +1,6 @@
-# MCP spike findings (2026-10-31, on the Xeneon Edge in iCUE)
+# Obsidian MCP plugin: observed behaviour (2026-10-31, on the Xeneon Edge in iCUE)
 
-All seven steps succeeded inside the iCUE webview.
+Measured with a throwaway test widget on the device. `shared/mcp.js` and the Obsidian widget rely on these facts. Plugin: Semantic Notes Vault MCP v0.11.42.
 
 ## (a) Does MCP work from iCUE?
 
@@ -11,7 +11,7 @@ Yes. `initialize` returned 200 and the `mcp-session-id` response header was read
 Tool text (`result.content[0].text`) parses to:
 
 ```json
-{ "result": { "path": "Focus Spike Test.md", "content": "REPLACED\nline B\nline C", "tags": [], "frontmatter": {} }, "context": { ... } }
+{ "result": { "path": "Spike Test.md", "content": "REPLACED\nline B\nline C", "tags": [], "frontmatter": {} }, "context": { ... } }
 ```
 
 The note body is `.result.content` (a single string; split on `\r?\n`).
@@ -33,7 +33,3 @@ Use the basename of `values[].path` (without `.md`). Subfolders are included.
 ## Errors
 
 `vault` `create` on an existing file returned HTTP 200 with a JSON body `{ "error": { "code": "UNKNOWN_ERROR", "message": "File already exists." }, ... }` inside the tool text, not a JSON-RPC error or `isError`. The client should treat a parsed tool result with a top-level `error` object as a tool error.
-
-## Known spike bug
-
-The on-screen task count read the wrong path ("Cannot read properties of undefined"). The query itself succeeded; the shape is as in the plan (`.result.result.values[]`).

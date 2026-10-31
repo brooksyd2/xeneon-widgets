@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { noteLabel, parseTask, flattenDataview, tasksFromDataview, findTaskLine, completeLine } = require('../../widgets/focus/lib.js');
+const { noteLabel, parseTask, flattenDataview, tasksFromDataview, findTaskLine, completeLine } = require('../../widgets/obsidian/lib.js');
 
 const today = new Date(2026, 9, 31);
 test('noteLabel formats long-form daily notes', () => {

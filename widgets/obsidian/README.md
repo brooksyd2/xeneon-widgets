@@ -55,7 +55,7 @@ All tap targets are 64px or more. There are no hover states.
 **Fetching** (every 60 seconds and after each completion), through `shared/mcp.js`:
 
 1. `dataview` `LIST FROM "<peopleFolder>"` lists the person notes.
-2. `dataview` `TASK WHERE !completed AND status = " " AND !contains(file.path, "🔧 Templates")` returns open tasks, which `FocusLib.tasksFromDataview` filters and sorts.
+2. `dataview` `TASK WHERE !completed AND status = " " AND !contains(file.path, "🔧 Templates")` returns open tasks, which `ObsidianLib.tasksFromDataview` filters and sorts.
 
 The last good result is cached in `localStorage` and shown immediately on start.
 

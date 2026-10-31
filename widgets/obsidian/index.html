@@ -219,7 +219,7 @@ button:focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; bord
   var iso = EdgeDates.iso, fmtDate = EdgeDates.fmtDate, daysBetween = EdgeDates.daysBetween, hhmm = EdgeDates.hhmm;
 
   /* ---------- Parsing Obsidian Tasks lines ---------- */
-  var parseTask = FocusLib.parseTask, selectAndSort = FocusLib.selectAndSort;
+  var parseTask = ObsidianLib.parseTask, selectAndSort = ObsidianLib.selectAndSort;
 
   /* ---------- Obsidian MCP server ---------- */
   var TASK_QUERY = 'TASK WHERE !completed AND status = " " AND !contains(file.path, "\u{1F527} Templates")';
@@ -251,7 +251,7 @@ button:focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; bord
   function fetchTasks(today) {
     return loadPeople().then(function (people) {
       return client().call('dataview', { action: 'query', raw: true, query: TASK_QUERY }).then(function (r) {
-        return FocusLib.tasksFromDataview(dvValues(r), people, today, peopleFolder());
+        return ObsidianLib.tasksFromDataview(dvValues(r), people, today, peopleFolder());
       });
     });
   }
@@ -260,9 +260,9 @@ button:focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; bord
   function completeRemote(t) {
     return client().call('view', { action: 'file', path: t.path, raw: true }).then(function (r) {
       var lines = String((r && r.result && r.result.content) || '').split(/\r?\n/);
-      var idx = FocusLib.findTaskLine(lines, t.line, t.body);
+      var idx = ObsidianLib.findTaskLine(lines, t.line, t.body);
       if (idx === -1) { var e = new Error('moved'); e.kind = 'moved'; throw e; }
-      return client().call('edit', { action: 'at_line', path: t.path, mode: 'replace', lineNumber: idx + 1, content: FocusLib.completeLine(lines[idx], iso(new Date())) });
+      return client().call('edit', { action: 'at_line', path: t.path, mode: 'replace', lineNumber: idx + 1, content: ObsidianLib.completeLine(lines[idx], iso(new Date())) });
     });
   }
   function openRemote(t) { return client().call('view', { action: 'open_in_obsidian', path: t.path }); }
@@ -459,9 +459,9 @@ button:focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; bord
   });
 
   /* ---------- Data lifecycle ---------- */
-  function saveCache() { try { localStorage.setItem('focus.cache', JSON.stringify({ tasks: S.tasks, updated: S.updated && S.updated.getTime() })); } catch (e) {} }
+  function saveCache() { try { localStorage.setItem('obsidian.cache', JSON.stringify({ tasks: S.tasks, updated: S.updated && S.updated.getTime() })); } catch (e) {} }
   function loadCache() {
-    try { var c = JSON.parse(localStorage.getItem('focus.cache') || 'null'); if (c && c.tasks) { S.tasks = c.tasks; S.updated = c.updated ? new Date(c.updated) : null; return true; } } catch (e) {}
+    try { var c = JSON.parse(localStorage.getItem('obsidian.cache') || 'null'); if (c && c.tasks) { S.tasks = c.tasks; S.updated = c.updated ? new Date(c.updated) : null; return true; } } catch (e) {}
     return false;
   }
 

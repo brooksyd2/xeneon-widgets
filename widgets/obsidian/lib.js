@@ -100,5 +100,5 @@
 
   var api = { shortName: shortName, noteLabel: noteLabel, parseTask: parseTask, selectAndSort: selectAndSort,
     flattenDataview: flattenDataview, tasksFromDataview: tasksFromDataview, findTaskLine: findTaskLine, completeLine: completeLine };
-  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FocusLib = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ObsidianLib = api;
 })(this);

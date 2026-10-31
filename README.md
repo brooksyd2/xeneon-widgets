@@ -2,10 +2,14 @@
 
 Corsair iCUE widgets for the Xeneon Edge touchscreen. Each widget is a plain HTML/CSS/JS folder rendered by iCUE's Chromium.
 
+## Widgets
+
+- `widgets/obsidian/`: Obsidian high-priority and overdue tasks, with tap to complete and tap to open.
+
 ## Layout
 
 - `widgets/<name>/`: one folder per widget (`manifest.json`, `index.html`, `designs/` reference PNGs).
-- `shared/`: code reused by widgets (`edge-ink.css`, `fonts/`, `dates.js`, `icue.js`).
+- `shared/`: code reused by widgets (`edge-ink.css`, `fonts/`, `dates.js`, `icue.js`, `mcp.js` for the Obsidian MCP server; `obsidian-mcp.md` records the plugin behaviour it relies on).
 - `scripts/build.mjs`: builds a widget into `dist/<name>/`.
 - `tests/`: `node --test` suites (`tests/shared/`, `tests/<name>/`).
 
