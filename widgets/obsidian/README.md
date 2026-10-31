@@ -6,10 +6,12 @@ An iCUE HTML widget that shows high-priority and overdue Obsidian tasks, with ta
 
 | File | Purpose |
 | --- | --- |
-| `index.html` | The whole widget: markup, CSS and JS inline. No external requests except the local Obsidian MCP server. |
+| `index.html` | Widget markup, styles and UI logic. No external requests except the local Obsidian MCP server. |
+| `lib.js` | Task parsing, selection and completion helpers (`ObsidianLib`). |
 | `manifest.json` | iCUE widget manifest. Check `min_framework_version`, `min_app_version` and `supported_devices` against the current iCUE spec before packaging. |
 | `icon.svg` | Widget icon. |
-| `fonts/` | Inter, JetBrains Mono and Caveat (latin subsets, woff2, SIL OFL; licences in `fonts/licences/`). Loaded by relative path. |
+
+The build copies in the shared files `shared/edge-ink.css`, `shared/fonts/`, `shared/dates.js`, `shared/icue.js` and `shared/mcp.js`.
 
 ## Prerequisites
 
@@ -28,7 +30,7 @@ For testing and packaging, see the root README.
 
 `manifest.json` declares URL permissions for `localhost:3001` and `127.0.0.1:3001`.
 
-iCUE parses `<head>` as strict XML, so every tag there is self-closed and the doctype is uppercase. Keep it that way. Check the iCUE **Permissions** reference in case local network access needs declaring in `manifest.json`.
+iCUE parses `<head>` as strict XML, so every tag there is self-closed and the doctype is uppercase. Keep it that way.
 
 ## Layout
 
@@ -52,12 +54,12 @@ All tap targets are 64px or more. There are no hover states.
 
 **Parsed fields.** 📅 due, ⏳ scheduled, priority, people (wikilinks to notes in the people folder, or `@Name`) and the note label (`Folder · 7 Oct` for daily notes named `YYYY-MM-DD`, otherwise the note name). Tags, block IDs, recurrence and other date fields are removed from the display text.
 
-**Fetching** (every 60 seconds and after each completion), through `shared/mcp.js`:
+**Fetching** (every 60 seconds; a completed task leaves the list locally and the next refresh picks up any other change), through `shared/mcp.js`:
 
 1. `dataview` `LIST FROM "<peopleFolder>"` lists the person notes.
 2. `dataview` `TASK WHERE !completed AND status = " " AND !contains(file.path, "🔧 Templates")` returns open tasks, which `ObsidianLib.tasksFromDataview` filters and sorts.
 
-The last good result is cached in `localStorage` and shown immediately on start.
+The last good result is cached in `localStorage` and shown immediately on start. The widget starts straight away and treats iCUE's events (initialised, data updated) as extra refresh triggers. Only a network failure shows the offline state; other load failures keep the current tasks and show a brief footer notice.
 
 **Complete.** The widget reads the note (`view` file), finds the exact line (at its recorded index, else by unique matching text), and replaces just that line with `edit` `at_line`: `[ ]` becomes `[x]` and ` ✅ YYYY-MM-DD` is added (before any trailing `^block-id`). If the line can't be found unambiguously it fails rather than guessing. The UI is optimistic: the tick and strike-through show at once, the item leaves after 1 second once the write has succeeded, and the next task slides into Next up. On failure the item is restored and a footer notice explains. Recurring tasks (🔁) are ticked without creating the next occurrence.
 
@@ -79,4 +81,4 @@ Open `index.html?demo=normal|completing|clear|offline|setup&size=s|xl` in Chromi
 
 ## Tuning
 
-`CONFIG` at the top of the script sets the refresh interval, completion hold, breakpoint, and request timeout. Colour and type tokens are CSS custom properties at the top of the stylesheet, copied from Edge Ink v1.
+`CONFIG` at the top of the script sets the refresh interval, completion hold, breakpoint, and request timeout. Colour and type tokens live in `shared/edge-ink.css`.

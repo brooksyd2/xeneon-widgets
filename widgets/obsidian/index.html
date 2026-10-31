@@ -262,6 +262,7 @@ button:focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; bord
       var lines = String((r && r.result && r.result.content) || '').split(/\r?\n/);
       var idx = ObsidianLib.findTaskLine(lines, t.line, t.body);
       if (idx === -1) { var e = new Error('moved'); e.kind = 'moved'; throw e; }
+      // shortcut: no compare-and-swap between view and at_line; a line inserted or deleted in the note in that instant could shift the target. Upgrade if the plugin gains a conditional edit.
       return client().call('edit', { action: 'at_line', path: t.path, mode: 'replace', lineNumber: idx + 1, content: ObsidianLib.completeLine(lines[idx], iso(new Date())) });
     });
   }
@@ -384,7 +385,7 @@ button:focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; bord
       '</ol></div>' +
       '<div class="msg-aside"><dl class="kv">' +
         '<dt>Plugin</dt><dd>Semantic Notes Vault MCP</dd>' +
-        '<dt>Address</dt><dd>' + 'localhost:3001' + '</dd>' +
+        '<dt>Address</dt><dd>localhost:3001</dd>' +
         '<dt>Shows</dt><dd>High, medium, overdue</dd>' +
       '</dl></div>' +
     '</section>';
@@ -465,19 +466,22 @@ button:focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; bord
     return false;
   }
 
-  var timer = null;
+  var timer = null, refreshSeq = 0;
   function refresh() {
     if (S.demo) return;
     if (!setting('apiKey', '')) { S.mode = 'setup'; render(); return; }
     if (Object.keys(S.busy).length) return; /* never yank the list mid-animation */
     S.today = new Date();
+    var seq = ++refreshSeq; /* a newer refresh supersedes older replies */
     fetchTasks(S.today).then(function (tasks) {
-      if (Object.keys(S.busy).length) return;
+      if (seq !== refreshSeq || Object.keys(S.busy).length) return;
       S.tasks = tasks; S.updated = new Date(); S.mode = tasks.length ? 'normal' : 'clear';
       saveCache(); render();
     }, function (e) {
+      if (seq !== refreshSeq) return;
       if (e.kind === 'auth') S.mode = 'auth';
-      else S.mode = 'offline';
+      else if (e.kind === 'offline' || S.mode === 'loading') S.mode = 'offline';
+      else { showFlash('Couldn’t load tasks from Obsidian. Retrying'); return; }
       render();
     });
   }
