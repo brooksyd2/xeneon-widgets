@@ -4,7 +4,7 @@ A small local service that the Xeneon widgets talk to for Google data (Gmail and
 
 ## Running
 
-- `node companion` starts the service and prints the bearer token and the listening URL.
+- `node companion` starts the service and prints the bearer token and the listening URL. Run it from the folder that **contains** `companion\` (e.g. `xeneon-build`); from inside `companion\` itself use `node .` (and `node . signin`).
 - `node companion signin` signs in to Google (see Google set-up). The refresh token is stored in `accounts.json`, encrypted with Windows DPAPI for your user.
 
 ## Google set-up
