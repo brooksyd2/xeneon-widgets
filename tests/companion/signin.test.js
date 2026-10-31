@@ -47,3 +47,23 @@ test('signin rejects a wrong state and stores nothing', async () => {
   }), /state/);
   assert.ok(!fs.existsSync(path.join(dir, 'accounts.json')));
 });
+
+test('signin survives a request to // and keeps waiting for the callback', async () => {
+  const dir = setup();
+  const http = require('node:http');
+  const email = await signin({
+    dir, fetch: fakeGoogle, secret, log: () => {},
+    openBrowser: async (url) => {
+      const u = new URL(url);
+      const cb = new URL(u.searchParams.get('redirect_uri'));
+      const status = await new Promise((resolve, reject) => {
+        http.get({ host: '127.0.0.1', port: cb.port, path: '//' }, (r) => { r.resume(); resolve(r.statusCode); }).on('error', reject);
+      });
+      assert.strictEqual(status, 404);
+      cb.searchParams.set('code', 'c');
+      cb.searchParams.set('state', u.searchParams.get('state'));
+      await (await globalThis.fetch(cb)).text();
+    },
+  });
+  assert.strictEqual(email, 'me@x.y');
+});

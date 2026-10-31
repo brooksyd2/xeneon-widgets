@@ -7,6 +7,8 @@
 <link rel="icon" type="image/svg+xml" href="icon.svg"/>
 <meta name="x-icue-property" content="companionToken" data-label="'Companion token'" data-type="textfield" data-default="''"/>
 <script type="application/json" id="x-icue-groups">[{"title":"'Companion'","properties":["companionToken"],"info":"'Paste the token printed by: node companion'"}]</script>
+</head>
+<body>
 <style>
 @font-face{font-family:"Inter";font-weight:400;font-style:normal;font-display:block;src:url("fonts/inter-latin-400-normal.woff2") format("woff2")}
 @font-face{font-family:"Inter";font-weight:500;font-style:normal;font-display:block;src:url("fonts/inter-latin-500-normal.woff2") format("woff2")}
@@ -152,8 +154,6 @@ button.ev:active,button.ev:active + .ev{border-top-color:transparent}
 .offline .dim{opacity:.42}
 .offline button:not(.keep){pointer-events:none}
 </style>
-</head>
-<body>
 <main class="widget" id="widget">
   <section class="panel next" id="pNext" aria-label="Next meeting"></section>
   <section class="panel" id="pToday" aria-label="Today's meetings"></section>
@@ -288,7 +288,7 @@ button.ev:active,button.ev:active + .ev{border-top-color:transparent}
       return;
     }
     if (S.mode === 'loading') {
-      el.innerHTML = '<div class="head"><span class="hand">next up</span></div><p class="body muted" style="margin:0">Connecting to the companion…</p>';
+      el.innerHTML = '<div class="head"><span class="hand">next up</span></div><p class="body muted" style="margin:0">' + (S.failed ? 'The companion couldn\'t reach Google. Retrying.' : 'Connecting to the companion…') + '</p>';
       return;
     }
 
@@ -509,11 +509,11 @@ button.ev:active,button.ev:active + .ev{border-top-color:transparent}
     var seq = ++refreshSeq;
     api('GET', '/state').then(function (j) {
       if (seq !== refreshSeq) return;
-      applyState(j); S.mode = 'live'; renderAll();
+      applyState(j); S.mode = 'live'; S.failed = false; renderAll();
     }, function (err) {
       if (seq !== refreshSeq) return;
       var c = classify(err);
-      if (c) S.mode = c;
+      if (c) S.mode = c; else if (!hasData()) S.failed = true;
       renderAll();
     });
   }

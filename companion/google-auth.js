@@ -93,8 +93,8 @@ async function signin({ dir, openBrowser = openUrl, fetch = globalThis.fetch, se
   const done = new Promise((resolve, reject) => { finish = { resolve, reject }; });
   done.catch(() => {}); // rejection may land before it is awaited
   const server = http.createServer((req, res) => {
-    const q = new URL(req.url, 'http://127.0.0.1').searchParams;
     if (!req.url.startsWith('/callback')) { res.writeHead(404); return res.end(); }
+    const q = new URL(req.url, 'http://127.0.0.1').searchParams;
     const ok = q.get('state') === state && q.get('code');
     res.writeHead(ok ? 200 : 400, { 'Content-Type': 'text/plain' });
     res.end(ok ? 'Signed in. You can close this tab.' : 'Sign-in failed.');

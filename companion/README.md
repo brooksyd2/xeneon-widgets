@@ -20,11 +20,17 @@ If Internal is not available, use user type External and set the publishing stat
 
 ## Install and auto-start
 
-1. Copy `companion/` to `C:\Users\brook\Documents\xeneon-build\companion\`.
-2. From `xeneon-build`, run `node companion` once. It creates `config.json` with the token and prints it; stop it with Ctrl+C.
-3. Put the Google client id and secret into `config.json` (see Google set-up), then run `node companion signin`.
-4. To start it at login, place a shortcut to `companion\start-hidden.vbs` in `shell:startup` (press Win+R, type `shell:startup`). The script runs `node` with no window; if wscript cannot find `node`, edit the script to use the full path to `node.exe`. Stop it from Task Manager (end the `node.exe` process).
-5. Package the widget as for Obsidian: copy `dist/gmail` to `xeneon-build\gmail`, then in `xeneon-build` run `icuewidget validate gmail` and `icuewidget package gmail`. The "translation.json is missing" warning is harmless.
+1. In the WSL repo run `npm run build` (or `node scripts/build.mjs gmail`), which produces `dist/gmail`. Copy the repo's `companion/` folder to `C:\Users\brook\Documents\xeneon-build\companion\`.
+2. From `xeneon-build`, run `node companion` once. It creates `%APPDATA%\xeneon-companion\config.json` with the token and prints it; stop it with Ctrl+C.
+3. Put the Google client id and secret into that `config.json`, then run `node companion signin`:
+
+   ```json
+   { "clientId": "<your client id>", "clientSecret": "<your client secret>" }
+   ```
+
+   (keep the existing `token` entry as it is.)
+4. To start it at login, place a shortcut to `companion\start-hidden.vbs` in `shell:startup` (press Win+R, type `shell:startup`). The script runs `node` with no window; if wscript cannot find `node`, edit the script to use the full path to `node.exe`. Stop it from Task Manager (end the `node.exe` process). Stop any console `node companion` before relying on the Startup shortcut: a second instance exits because the port is in use.
+5. Package the widget as for Obsidian: copy `dist/gmail` to `xeneon-build\gmail`, then in `xeneon-build` run `icuewidget validate gmail` and `icuewidget package gmail`. `icuewidget validate` may warn "translation.json is missing", which is harmless.
 
 ## Device checklist
 
