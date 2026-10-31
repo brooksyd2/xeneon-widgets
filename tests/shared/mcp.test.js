@@ -92,3 +92,28 @@ test('maps an error object in tool text to tool', async () => {
 test('maps other status to http', async () => {
   await assert.rejects(mk(fake([res(500)])).call('t', {}), (e) => e.kind === 'http');
 });
+
+test('concurrent first calls share one initialise', async () => {
+  const f = fake([initRes('s1'), res(202), res(200, toolOk('1')), res(200, toolOk('2')), res(200, toolOk('3'))]);
+  const m = mk(f);
+  await Promise.all([m.call('t', {}), m.call('t', {}), m.call('t', {})]);
+  const methods = f.reqs.map((r) => r.body.method);
+  assert.strictEqual(methods.filter((x) => x === 'initialize').length, 1);
+  assert.strictEqual(methods.filter((x) => x === 'notifications/initialized').length, 1);
+  const initDone = methods.indexOf('notifications/initialized');
+  f.reqs.forEach((r, i) => {
+    if (r.body.method !== 'tools/call') return;
+    assert.ok(i > initDone);
+    assert.strictEqual(r.headers['mcp-session-id'], 's1');
+  });
+});
+
+test('concurrent expiry shares one re-initialise', async () => {
+  const f = fake([initRes('s1'), res(202), res(200, toolOk('0')), res(404), res(404), initRes('s2'), res(202), res(200, toolOk('1')), res(200, toolOk('2'))]);
+  const m = mk(f);
+  await m.call('t', {});
+  const out = await Promise.all([m.call('t', {}), m.call('t', {})]);
+  assert.deepStrictEqual(out, [1, 2]);
+  assert.strictEqual(f.reqs.filter((r) => r.body.method === 'initialize').length, 2);
+  assert.strictEqual(f.reqs.slice(-2).every((r) => r.headers['mcp-session-id'] === 's2'), true);
+});

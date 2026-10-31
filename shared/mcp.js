@@ -8,7 +8,7 @@
   }
 
   function createMcp(o) {
-    var sid = null, nextId = 1;
+    var sid = null, ready = null, nextId = 1;
 
     async function post(payload) {
       var ctl = new AbortController();
@@ -36,11 +36,18 @@
       check(await post({ jsonrpc: '2.0', method: 'notifications/initialized' }));
     }
 
+    // One shared in-flight init; cleared on failure so the next call retries.
+    function ensure() {
+      if (!ready) ready = init().catch(function (e) { ready = null; throw e; });
+      return ready;
+    }
+
     async function send(tool, args, retried) {
-      if (!sid) await init();
+      await ensure();
+      var used = sid;
       var r = await post({ jsonrpc: '2.0', id: nextId++, method: 'tools/call', params: { name: tool, arguments: args || {} } });
       if (r.status === 404 || (r.status === 400 && /session/i.test(r.body))) {
-        sid = null;
+        if (sid === used) { sid = null; ready = null; }
         if (retried) throw err('http', 'HTTP ' + r.status);
         return send(tool, args, true);
       }
