@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=2536, height=696"/>
+<title>'Home'</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg"/>
+<meta name="x-icue-property" content="companionToken" data-label="'Companion token'" data-type="textfield" data-default="''"/>
+<script type="application/json" id="x-icue-groups">[{"title":"'Companion'","properties":["companionToken"],"info":"'Paste the token printed by: node companion'"}]</script>
+</head>
+<body>
+<style>
+@font-face{font-family:"Inter";font-weight:400;font-style:normal;font-display:block;src:url("shared/fonts/inter-latin-400-normal.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-weight:500;font-style:normal;font-display:block;src:url("shared/fonts/inter-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-weight:600;font-style:normal;font-display:block;src:url("shared/fonts/inter-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-weight:400;font-style:normal;font-display:block;src:url("shared/fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-weight:500;font-style:normal;font-display:block;src:url("shared/fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"Caveat";font-weight:500;font-style:normal;font-display:block;src:url("shared/fonts/caveat-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"Caveat";font-weight:600;font-style:normal;font-display:block;src:url("shared/fonts/caveat-latin-600-normal.woff2") format("woff2")}
+:root{
+  --canvas:#0d0f11; --grid-dot:#1b1f23; --surface:#16191c; --surface-raised:#1e2226;
+  --line:#2a2f35; --line-strong:#6b737a; --ink:#eceeef; --ink-muted:#959da4; --ink-faint:#6b737a;
+  --mint:#5ee6b5; --mint-soft:#11302a; --on-mint:#0b1f19;
+  --success:#74b9ff; --warning:#f5b544; --warning-soft:#33260f; --danger:#ff7a70; --danger-soft:#3a1a18;
+  --sans:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  --hand:Caveat,"Segoe Print","Bradley Hand",cursive;
+  --r-sm:8px; --r-md:14px; --r-panel:24px; --touch:64px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--canvas)}
+body{width:2536px;height:696px;overflow:hidden;color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;text-align:left}
+button:focus-visible{outline:3px solid var(--mint);outline-offset:3px}
+button:disabled{cursor:default}
+svg.i{width:32px;height:32px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+.screen{position:relative;width:2536px;height:696px;display:flex;gap:24px;
+  background-color:var(--canvas);
+  background-image:radial-gradient(circle,var(--grid-dot) 1.6px,transparent 2px);background-size:24px 24px;background-position:12px 12px}
+.panel{background:var(--surface);border:2px solid var(--line);border-radius:var(--r-panel);padding:32px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.head{display:flex;align-items:center;justify-content:space-between;height:44px;flex:none;gap:16px}
+.label{font-family:var(--hand);font-size:40px;font-weight:500;line-height:1;color:var(--mint)}
+.meta{font-size:22px;line-height:28px;color:var(--ink-muted)}
+.content{flex:1;min-height:0;transition:opacity .2s}
+.stale .content{opacity:.45}
+.badge{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:999px;font-size:22px;line-height:28px;white-space:nowrap}
+.badge svg.i{width:24px;height:24px}
+.badge.mint{background:var(--mint-soft);color:var(--mint)}
+.badge.quiet{background:var(--surface-raised);color:var(--ink-muted)}
+.badge.warn{background:var(--warning-soft);color:var(--warning)}
+.badge.warn .soft{color:var(--ink-muted)}
+
+/* cameras */
+.p-cam{width:734px}
+.cams{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:330px 1fr;gap:16px;height:100%}
+.cam{position:relative;border-radius:var(--r-md);overflow:hidden;background:var(--surface-raised);border:2px solid var(--line);min-height:0}
+.cam.hero{grid-column:1 / 3}
+.cam .scene{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover}
+.cam .cap{position:absolute;left:12px;bottom:12px;display:flex;flex-direction:column;gap:0;background:rgba(13,15,17,.82);border-radius:var(--r-sm);padding:6px 12px}
+.cam .cap b{font-weight:500;font-size:24px;line-height:32px}
+.cam .cap .age{font-family:var(--mono);font-size:22px;line-height:28px;white-space:nowrap;color:var(--ink-muted)}
+.cam .cap .age.old{color:var(--warning)}
+.cam.off{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--ink-muted);border-style:dashed;border-color:var(--line-strong)}
+.cam.off .t{font-size:24px;line-height:32px;color:var(--ink);display:flex;align-items:center;gap:10px}
+.cam.off .t:before{content:"";width:12px;height:12px;border-radius:50%;background:var(--warning)}
+.cam.off .s{font-size:22px;line-height:28px}
+.cam.off .cap{background:none}
+
+/* air con */
+.p-ac{width:960px}
+.ac{display:grid;grid-template-columns:284px repeat(3,1fr);grid-template-rows:1fr 1fr;gap:16px;height:100%}
+.tile{position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:20px;border-radius:var(--r-md);background:var(--surface-raised);border:2px solid var(--line);min-width:0;min-height:var(--touch)}
+.tile .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.tile .name{font-size:24px;line-height:30px;font-weight:500}
+.tile.big .name{font-size:28px;line-height:36px}
+.tile .pw{color:var(--ink-muted)}
+.tile .temp{font-family:var(--mono);font-size:44px;line-height:1;font-weight:500;letter-spacing:-.01em}
+.tile.big .temp{font-size:72px}
+.tile .temp small{font-size:.5em;color:var(--ink-muted);margin-left:2px;vertical-align:top}
+.tile .room{font-size:22px;line-height:28px;color:var(--ink-muted);margin-top:6px}
+.tile .state{display:flex;align-items:center;gap:8px;font-size:24px;line-height:30px;color:var(--ink-muted);min-height:30px}
+.tile .state svg.i{width:28px;height:28px}
+.tile .state .tgt{font-family:var(--mono)}
+.tile.on{background:var(--mint-soft);border-color:var(--mint)}
+.tile.on .pw,.tile.on .state{color:var(--mint)}
+.tile.pending{border:2px dashed var(--line-strong)}
+.tile.pending .state{color:var(--ink)}
+.tile.failed{border-color:var(--danger)}
+.tile.failed .state{color:var(--danger);white-space:nowrap}
+.tile .retry{display:block;font-size:22px;line-height:28px;color:var(--ink-muted);margin-top:2px}
+.spin{width:28px;height:28px;animation:r 1s linear infinite}
+@keyframes r{to{transform:rotate(360deg)}}
+
+/* heating */
+.p-heat{width:440px}
+.heat{display:flex;flex-direction:column;justify-content:space-between;height:100%}
+.hero-temp{font-family:var(--mono);font-size:120px;line-height:1;font-weight:500;letter-spacing:-.02em}
+.hero-temp small{font-size:48px;color:var(--ink-muted);vertical-align:top;margin-left:4px;letter-spacing:0}
+.underline{display:block;width:300px;height:18px;margin-top:6px}
+.target .meta{margin-bottom:12px}
+.stepper{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.step{width:96px;height:96px;border-radius:var(--r-md);border:2px solid var(--line-strong);background:var(--surface-raised);display:flex;align-items:center;justify-content:center;color:var(--ink)}
+.step svg.i{width:40px;height:40px;stroke-width:2}
+.step:disabled{color:var(--ink-faint);border-color:var(--line)}
+.tval{font-family:var(--mono);font-size:56px;font-weight:500;line-height:1}
+.status{display:flex;align-items:center;gap:10px;font-size:24px;line-height:30px;color:var(--ink-muted);margin-top:20px}
+.status.on{color:var(--mint)}
+.status svg.i{width:28px;height:28px}
+
+/* coffee */
+.p-coffee{width:330px}
+.brew{width:100%;height:100%;border-radius:var(--r-md);border:2px solid var(--line-strong);background:var(--surface-raised);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:24px}
+.brew .ring{width:120px;height:120px;border-radius:50%;border:2px solid var(--line-strong);display:flex;align-items:center;justify-content:center;color:var(--ink)}
+.brew .ring svg.i{width:56px;height:56px;stroke-width:2}
+.brew .t{font-size:28px;line-height:36px;font-weight:500}
+.brew .s{font-size:22px;line-height:28px;color:var(--ink-muted)}
+.brew.on{background:var(--mint-soft);border-color:var(--mint)}
+.brew.on .ring{border-color:var(--mint);color:var(--mint)}
+.brew .big{font-family:var(--mono);font-size:72px;line-height:1;font-weight:500;color:var(--mint)}
+
+/* empty + set-up */
+.empty{height:100%;display:flex;align-items:center;font-size:28px;line-height:38px;color:var(--ink-muted);max-width:560px}
+.setup h2{font-size:36px;line-height:44px;font-weight:500;margin:0 0 12px}
+.setup p{font-size:28px;line-height:38px;color:var(--ink-muted);margin:0 0 24px;max-width:600px}
+.setup ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:16px}
+.setup li{display:flex;gap:20px;font-size:24px;line-height:32px}
+.setup li .n{font-family:var(--mono);color:var(--ink-muted);width:16px}
+.setup code{font-family:var(--mono);font-size:22px;background:var(--surface-raised);border:2px solid var(--line);border-radius:var(--r-sm);padding:2px 10px}
+
+/* live view */
+.live{display:flex;gap:24px;width:100%;height:100%}
+.live .info{width:613px;justify-content:space-between}
+.live .video{width:1238px;height:696px;border-radius:var(--r-panel);overflow:hidden;position:relative;border:2px solid var(--line);flex:none;background:#000}
+.live .video .scene{width:100%;height:100%;display:block;object-fit:cover}
+.live .stamp{position:absolute;right:20px;top:16px;font-family:var(--mono);font-size:22px;color:var(--ink);background:rgba(13,15,17,.72);border-radius:var(--r-sm);padding:4px 10px}
+.live .close-p{width:613px;justify-content:center}
+.live h1{font-size:56px;line-height:64px;font-weight:500;margin:0}
+.livedot{display:inline-flex;align-items:center;gap:12px;font-size:28px;line-height:38px;color:var(--mint);margin-top:16px}
+.livedot:before{content:"";width:16px;height:16px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 6px var(--mint-soft)}
+.closebtn{width:100%;height:280px;border-radius:var(--r-md);border:2px solid var(--line-strong);background:var(--surface-raised);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;font-size:36px;font-weight:500}
+.closebtn svg.i{width:72px;height:72px;stroke-width:2}
+</style>
+<div id="app" class="screen" aria-live="polite"></div>
+
+<script src="shared/icue.js"></script>
+<script src="lib.js"></script>
+<script>
+/* ---------- icons (Tabler outline, 1.75 stroke) ---------- */
+const P = {
+  power:'<path d="M7 6a7.75 7.75 0 1 0 10 0"/><path d="M12 4l0 8"/>',
+  cool:'<path d="M10 4l2 1l2 -1"/><path d="M12 2v6.5l3 1.72"/><path d="M17.928 6.268l.134 2.232l1.866 1.232"/><path d="M20.66 7l-5.629 3.25l.01 3.458"/><path d="M19.928 14.268l-1.866 1.232l-.134 2.232"/><path d="M20.66 17l-5.629 -3.25l-2.99 1.738"/><path d="M14 20l-2 -1l-2 1"/><path d="M12 22v-6.5l-3 -1.72"/><path d="M6.072 17.732l-.134 -2.232l-1.866 -1.232"/><path d="M3.34 17l5.629 -3.25l-.01 -3.458"/><path d="M4.072 9.732l1.866 -1.232l.134 -2.232"/><path d="M3.34 7l5.629 3.25l2.99 -1.738"/>',
+  heat:'<path d="M12 12c2 -2.96 0 -7 -1 -8c0 3.038 -1.773 4.741 -3 6c-1.226 1.26 -2 3.24 -2 5a6 6 0 1 0 12 0c0 -1.532 -1.056 -3.94 -2 -5c-1.786 3 -2.791 3 -4 2z"/>',
+  dry:'<path d="M7.502 19.423c2.602 2.105 6.395 2.105 8.996 0c2.602 -2.105 3.262 -5.708 1.566 -8.546l-4.89 -7.26c-.42 -.625 -1.287 -.803 -1.936 -.397a1.376 1.376 0 0 0 -.41 .397l-4.893 7.26c-1.695 2.838 -1.035 6.441 1.567 8.546z"/>',
+  fan:'<path d="M5 8h8.5a2.5 2.5 0 1 0 -2.34 -3.24"/><path d="M3 12h15.5a2.5 2.5 0 1 1 -2.34 3.24"/><path d="M4 16h5.5a2.5 2.5 0 1 1 -2.34 3.24"/>',
+  auto:'<path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/>',
+  x:'<path d="M18 6l-12 12"/><path d="M6 6l12 12"/>',
+  minus:'<path d="M5 12l14 0"/>',
+  plus:'<path d="M12 5l0 14"/><path d="M5 12l14 0"/>',
+  camoff:'<path d="M3 3l18 18"/><path d="M15 11v-1l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -.675 .946"/><path d="M10 6h3a2 2 0 0 1 2 2v3m0 4v1a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2v-8a2 2 0 0 1 2 -2h1"/>',
+  plugoff:'<path d="M16.123 16.092l-.177 .177a5.81 5.81 0 1 1 -8.215 -8.215l.159 -.159"/><path d="M4 20l3.5 -3.5"/><path d="M15 4l-3.5 3.5"/><path d="M20 9l-3.5 3.5"/><path d="M16 16l-8 -8"/><path d="M3 3l18 18"/>',
+  alert:'<path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/>',
+  pause:'<path d="M6 5m0 1a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1z"/><path d="M14 5m0 1a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1z"/>',
+  crossmark:'<path d="M6 6l12 12"/><path d="M18 6l-12 12"/>'
+};
+const icon = (n, extra='') => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" ${extra}>${P[n]}</svg>`;
+const spinner = `<svg class="spin" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke="#2a2f35"/><path d="M12 3a9 9 0 0 1 9 9" stroke="#5ee6b5"/></svg>`;
+const MODE = {cool:'Cool',heat:'Heat',dry:'Dry',fan:'Fan',auto:'Auto'};
+
+/* ---------- camera stills (placeholders for the real snapshots) ---------- */
+const SCENES = {
+  garden:`<svg class="scene" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <rect width="640" height="360" fill="#7d878e"/>
+    <path d="M0 150 Q60 90 120 130 Q170 70 240 120 Q300 80 360 125 Q430 60 500 118 Q570 85 640 120 V200 H0Z" fill="#3e4a41"/>
+    <rect y="150" width="640" height="70" fill="#5a4b3f"/>
+    ${Array.from({length:22},(_,i)=>`<rect x="${i*30}" y="150" width="2" height="70" fill="#4a3e34"/>`).join('')}
+    <rect x="452" y="118" width="120" height="100" fill="#4d4038"/><path d="M444 120 L512 92 L580 120Z" fill="#3a302a"/><rect x="496" y="152" width="34" height="66" fill="#3a302a"/>
+    <rect y="218" width="640" height="142" fill="#53664c"/>
+    <path d="M0 360 L0 300 L640 290 L640 360Z" fill="#8a8580"/>
+    <path d="M0 300 L640 290" stroke="#6f6a65" stroke-width="2"/><path d="M160 298 L150 360 M320 295 L320 360 M480 292 L492 360" stroke="#6f6a65" stroke-width="2"/>
+    <ellipse cx="150" cy="248" rx="70" ry="10" fill="#475a42"/>
+  </svg>`,
+  front:`<svg class="scene" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <rect width="640" height="360" fill="#868f96"/>
+    <rect x="40" y="70" width="240" height="140" fill="#6f5e52"/><path d="M28 74 L160 20 L292 74Z" fill="#45403d"/>
+    <rect x="70" y="100" width="50" height="40" fill="#3b4247"/><rect x="200" y="100" width="50" height="40" fill="#3b4247"/><rect x="140" y="150" width="34" height="60" fill="#3b4247"/>
+    <rect x="330" y="80" width="280" height="130" fill="#7a6a5d"/><path d="M318 84 L470 30 L622 84Z" fill="#4a4441"/>
+    <rect x="360" y="110" width="50" height="40" fill="#3b4247"/><rect x="520" y="110" width="50" height="40" fill="#3b4247"/>
+    <rect y="200" width="640" height="26" fill="#3f4d3b"/>
+    <rect y="226" width="640" height="40" fill="#5b6066"/>
+    <path d="M0 266 H640 V360 H0Z" fill="#7a7672"/>
+    <path d="M240 360 L300 266 H420 L520 360Z" fill="#8d8882"/>
+    <rect x="300" y="276" width="170" height="54" rx="16" fill="#3d4650"/><rect x="322" y="258" width="118" height="30" rx="10" fill="#4b5560"/>
+    <circle cx="332" cy="332" r="14" fill="#1e2226"/><circle cx="440" cy="332" r="14" fill="#1e2226"/>
+  </svg>`,
+  door:`<svg class="scene" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <rect width="640" height="360" fill="#8b949a"/>
+    <path d="M0 0 H640 V360 H0Z" fill="#4c5a47"/>
+    <path d="M0 120 Q320 60 640 120 V360 H0Z" fill="#56684f"/>
+    <path d="M0 110 Q320 40 640 110 L640 140 Q320 75 0 140Z" fill="#3c4a3a"/>
+    <path d="M250 112 Q320 100 390 112 L380 150 Q320 140 260 150Z" fill="#6c5a4a"/>
+    <path d="M270 150 L370 150 L560 360 L80 360Z" fill="#9a948d"/>
+    <path d="M285 180 H355 M250 220 H390 M210 270 H430 M160 330 H480" stroke="#857f79" stroke-width="3"/>
+    <path d="M0 0 Q60 180 0 360 Z" fill="#2a2f35"/><path d="M640 0 Q580 180 640 360 Z" fill="#2a2f35"/>
+    <rect x="0" y="0" width="640" height="18" fill="#2a2f35"/>
+  </svg>`
+};
+
+/* ---------- demo data (?demo=<state>), no network ---------- */
+const BASE = () => ({
+  conn:'ok',             // ok | companion | ha | setup
+  since:'14:05',
+  now:'14:32:07',
+  live:null,             // camera id when the live view is open
+  cameras:[
+    {id:'garden', name:'Back Garden', age:4, online:true},
+    {id:'front',  name:'Front',       age:3, online:true},
+    {id:'door',   name:'Doorbell',    age:5, online:true}
+  ],
+  ac:[
+    {id:'office',  name:"Damian’s Office",  big:true, room:22.5, on:false, mode:'cool', target:21},
+    {id:'bed',     name:"Damian’s Bedroom", big:true, room:18.5, on:false, mode:'heat', target:22},
+    {id:'down',    name:'Downstairs Office', room:19.0, on:false, mode:'auto', target:21},
+    {id:'kitchen', name:'Kitchen',           room:20.5, on:false, mode:'cool', target:20},
+    {id:'living',  name:'Living Room',       room:20.0, on:false, mode:'heat', target:21},
+    {id:'main',    name:'Main Bedroom',      room:18.0, on:false, mode:'heat', target:20},
+    {id:'snug',    name:'Snug',              room:19.5, on:false, mode:'fan',  target:21},
+    {id:'spare',   name:'Spare Bedroom',     room:17.5, on:false, mode:'dry',  target:20}
+  ],
+  heat:{mode:'heat', action:'idle', room:20.5, target:18.0, min:10, max:32},
+  coffee:{on:false, mins:0}
+});
+const STATES = {
+  normal(s){},
+  busy(s){ ac(s,'office',{on:true,mode:'cool',target:21,room:23.5}); ac(s,'bed',{on:true,mode:'heat',target:22,room:18.5});
+           s.heat={mode:'heat',action:'heating',room:18.5,target:21.0,min:10,max:32};s.coffee={on:true,mins:12}; },
+  pending(s){ ac(s,'office',{pending:'on'}); },
+  failed(s){ ac(s,'living',{failed:true}); },
+  camoffline(s){ s.cameras[1]={...s.cameras[1],online:false,last:'09:12'}; },
+  live(s){ STATES.busy(s); s.live='door'; },
+  offline(s){ STATES.busy(s); s.conn='companion'; s.cameras.forEach(c=>c.age=27*60); },
+  haunreachable(s){ STATES.busy(s); s.conn='ha'; s.cameras.forEach(c=>c.age=27*60); },
+  setup(s){ s.conn='setup'; }
+};
+function ac(s,id,patch){ Object.assign(s.ac.find(a=>a.id===id),patch); }
+
+/* ---------- rendering ---------- */
+const fmtT = t => t==null ? '—' : t.toFixed(1);   // HA reports null for an unavailable sensor
+const ageText = sec => sec == null ? '' : HomeLib.ageText(sec);
+// demo shows the export's SVG scenes; live puts a placeholder that render() swaps for the loaded still
+const scene = id => DEMO ? SCENES[id] : `<span data-scene="${id}"></span>`;
+
+function connBadge(s){
+  if (s.conn==='companion') return `<span class="badge warn">${icon('plugoff')}Companion not running<span class="soft">&nbsp;· from ${s.since}</span></span>`;
+  if (s.conn==='ha') return `<span class="badge warn">${icon('alert')}Home Assistant not responding<span class="soft">&nbsp;· from ${s.since}</span></span>`;
+  return '';
+}
+
+function camerasPanel(s){
+  if (s.conn==='setup') return `<section class="panel p-cam"><div class="head"><span class="label">set up</span></div>
+    <div class="content setup"><h2>Paste the companion token</h2>
+    <p>The widget talks to Home Assistant through the companion on this PC.</p>
+    <ol><li><span class="n">1</span><span>Run <code>node companion</code></span></li>
+    <li><span class="n">2</span><span>Copy the token it prints</span></li>
+    <li><span class="n">3</span><span>Paste it in iCUE: Home widget settings, Companion token</span></li></ol></div></section>`;
+  const disabled = s.conn!=='ok' ? 'disabled' : '';
+  const tiles = s.cameras.map((c,i)=>{
+    const cls = 'cam' + (i===0?' hero':'');
+    if (!c.online) return `<div class="${cls} off" role="img" aria-label="${c.name} camera offline">${icon('camoff','style="width:48px;height:48px"')}
+      <span class="t">Offline</span><span class="s">${c.name} · last image ${c.last}</span></div>`;
+    return `<button class="${cls}" data-cam="${c.id}" ${disabled} aria-label="Open ${c.name} live view">${scene(c.id)}
+      <span class="cap"><b>${c.name}</b><span class="age ${c.age>=60?'old':''}">${ageText(c.age)}</span></span></button>`;
+  }).join('');
+  return `<section class="panel p-cam"><div class="head"><span class="label">cameras</span></div>
+    <div class="content"><div class="cams">${tiles}</div></div></section>`;
+}
+
+function acTile(a, disabled){
+  let cls = 'tile' + (a.big?' big':''), state, retry='';
+  if (a.pending){ cls+=' pending'; state = `${spinner}<span>${a.pending==='on'?'Turning on':'Turning off'}</span>`; }
+  else if (a.failed){ cls+=' failed'; state = `${icon('crossmark')}<span>Failed</span>`; retry = `<span class="retry">No response. Tap to retry</span>`; }
+  else if (a.on){ cls+=' on'; state = `${icon(a.mode)}<span>${MODE[a.mode]}</span><span class="tgt">&nbsp;→ ${a.target}°</span>`; }
+  else state = `<span>Off</span>`;
+  const label = `${a.name}, room ${fmtT(a.room)} degrees, ${a.on?'on, '+MODE[a.mode]+' to '+a.target+' degrees':'off'}. Tap to turn ${a.on?'off':'on'}`;
+  return `<button class="${cls}" data-ac="${a.id}" ${disabled} aria-label="${label}">
+    <span class="top"><span class="name">${a.name}</span><span class="pw">${icon('power')}</span></span>
+    <span><span class="temp">${fmtT(a.room)}<small>°</small></span>${a.big?'<span class="room" style="display:block">in the room</span>':''}</span>
+    <span><span class="state">${state}</span>${retry}</span></button>`;
+}
+function acPanel(s){
+  if (s.conn==='setup') return `<section class="panel p-ac"><div class="head"><span class="label">air con</span></div><div class="content empty">Your air con units appear here once the companion is connected.</div></section>`;
+  const onCount = s.ac.filter(a=>a.on).length;
+  const right = connBadge(s) || `<span class="meta">${onCount? onCount+' on':'All off'}</span>`;
+  const disabled = s.conn!=='ok' ? 'disabled' : '';
+  const order = [0,2,3,4,1,5,6,7]; // big tiles take column 1 of each row
+  return `<section class="panel p-ac"><div class="head"><span class="label">air con</span>${right}</div>
+    <div class="content"><div class="ac">${order.map(i=>acTile(s.ac[i],disabled)).join('')}</div></div></section>`;
+}
+
+function heatPanel(s){
+  if (s.conn==='setup') return `<section class="panel p-heat"><div class="head"><span class="label">heating</span></div><div class="content empty">The thermostat appears here once connected.</div></section>`;
+  const h = s.heat, st = HomeLib.heatingStatus(h), active = st.badge==='Heating', disabled = s.conn!=='ok' ? 'disabled' : '';
+  const badge = active ? `<span class="badge mint">${icon('heat')}Heating</span>` : `<span class="badge quiet">${st.badge}</span>`;
+  return `<section class="panel p-heat"><div class="head"><span class="label">heating</span>${badge}</div>
+    <div class="content heat">
+      <div><div class="hero-temp">${fmtT(h.room)}<small>°C</small></div>
+        <svg class="underline" viewBox="0 0 300 18" aria-hidden="true"><path d="M4 11 C 60 5, 120 15, 180 8 S 270 6, 296 9" fill="none" stroke="#5ee6b5" stroke-width="5" stroke-linecap="round"/></svg>
+        <div class="meta" style="margin-top:8px">Room now</div></div>
+      <div class="target"><div class="meta">Target</div>
+        <div class="stepper">
+          <button class="step" data-heat="-0.5" ${disabled||(h.target!=null&&h.target<=h.min)?'disabled':''} aria-label="Lower target by half a degree">${icon('minus')}</button>
+          <span class="tval">${h.target==null?'—':fmtT(h.target)+'°'}</span>
+          <button class="step" data-heat="0.5" ${disabled||(h.target!=null&&h.target>=h.max)?'disabled':''} aria-label="Raise target by half a degree">${icon('plus')}</button>
+        </div>
+        <div class="status ${active?'on':''}">${st.line}</div>
+      </div>
+    </div></section>`;
+}
+
+function coffeePanel(s){
+  if (s.conn==='setup') return `<section class="panel p-coffee"><div class="head"><span class="label">coffee</span></div><div class="content empty">Nothing to show yet.</div></section>`;
+  const c = s.coffee, disabled = s.conn!=='ok' ? 'disabled' : '';
+  const inner = c.on
+    ? `<span class="ring">${icon('power')}</span><span class="big">On</span><span class="s num">for ${c.mins}m</span><span class="t" style="font-size:24px">Coffee machine</span>`
+    : `<span class="ring">${c.pending ? spinner : icon('power')}</span><span class="t">Coffee machine</span><span class="s">${c.pending ? 'Turning on' : c.failed ? 'No response. Tap to retry' : 'Tap to turn on'}</span>`;
+  return `<section class="panel p-coffee"><div class="head"><span class="label">coffee</span></div>
+    <div class="content"><button class="brew ${c.on?'on':''}" data-coffee ${disabled || (c.on?'aria-disabled="true"':'')} aria-label="${c.on?'Coffee machine is on, for '+c.mins+' minutes':'Turn on the coffee machine'}">${inner}</button></div></section>`;
+}
+
+function liveView(s){
+  const c = s.cameras.find(x=>x.id===s.live);
+  return `<div class="live">
+    <section class="panel info"><div><div class="head"><span class="label">live view</span></div>
+      <h1 style="margin-top:24px">${c.name}</h1><div class="livedot">Live</div></div>
+      <div class="meta">The stills resume when you close this.</div></section>
+    <div class="video" role="img" aria-label="${c.name} live stream">${DEMO ? SCENES[c.id] : `<img class="scene" id="liveimg" alt="" src="${API}/home/cameras/${c.id}/live?token=${encodeURIComponent(token())}">`}<span class="stamp" id="stamp">${s.now}</span></div>
+    <section class="panel close-p"><button class="closebtn" data-close aria-label="Close live view">${icon('x')}Close</button></section>
+  </div>`;
+}
+
+let S;
+const hhmm = d => String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+const hhmmss = d => hhmm(d) + ':' + String(d.getSeconds()).padStart(2,'0');
+
+function render(){
+  const app = document.getElementById('app');
+  app.className = 'screen' + (S.conn==='companion'||S.conn==='ha' ? ' stale' : '');
+  if (S.live && document.getElementById('liveimg')) return;   // re-rendering would reopen the stream
+  if (!S.live && !S.heat && S.conn!=='setup'){   // no data yet: blank while loading, badge if never reached
+    app.innerHTML = S.conn==='ok' ? '' : `<section class="panel" style="width:100%"><div class="head"><span class="label">home</span>${connBadge(S)}</div></section>`;
+    return;
+  }
+  app.innerHTML = S.live ? liveView(S) : camerasPanel(S)+acPanel(S)+heatPanel(S)+coffeePanel(S);
+  app.querySelectorAll('[data-scene]').forEach(el => { if (stills[el.dataset.scene]) el.replaceWith(stills[el.dataset.scene]); });
+  const live = document.getElementById('liveimg');
+  if (live) live.onerror = liveFallback;
+}
+
+/* ---------- companion ---------- */
+const API = 'http://localhost:8817/v1';
+const POLL_MS = 5000, STILL_MS = 5000, HEAT_DEBOUNCE_MS = 1000, LIVE_FALLBACK_MS = 1000, REQ_TIMEOUT_MS = 6000;
+const qs = new URLSearchParams(location.search);
+const DEMO = qs.get('demo');
+const token = () => EdgeIcue.setting('companionToken', (qs.get('token') || '').trim());
+
+function api(method, path, body){
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), REQ_TIMEOUT_MS);
+  return fetch(API + path, {
+    method, signal: ctl.signal, cache: 'no-store',
+    headers: { 'Authorization': 'Bearer ' + token(), 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined
+  }).then(r => r.json().catch(() => ({})).then(j => {
+    if (r.ok) return j;
+    const e = new Error(j.error || 'HTTP ' + r.status); e.status = r.status; e.error = j.error; throw e;
+  })).finally(() => clearTimeout(timer));
+}
+
+let polled = null;            // last GET /home/state body
+const pending = {};           // AC id -> {want, at, failed}
+let coffeePending = null;     // {want:true, at, failed}
+let heatHold = false, heatSeq = 0, heatTimer = null, heatShown = null;
+const stills = {}, loadedAt = {};   // camera id -> loaded <img>, ms of its load
+
+function settleAll(p, on, now){ const r = HomeLib.settle(p, on, now); if (r==='failed') p.failed = true; return r==='done'; }
+
+function build(){
+  const now = Date.now(), j = polled;
+  for (const a of j.ac) if (pending[a.id] && settleAll(pending[a.id], a.on, now)) delete pending[a.id];
+  if (coffeePending && settleAll(coffeePending, j.coffee.on, now)) coffeePending = null;
+  S.cameras = j.cameras.map(c => ({...c, last: c.last ? hhmm(new Date(c.last)) : '—',
+    age: loadedAt[c.id] ? Math.floor((now - loadedAt[c.id]) / 1000) : null}));
+  S.ac = j.ac.map(a => { const p = pending[a.id];
+    return {...a, pending: p && !p.failed ? (p.want ? 'on' : 'off') : null, failed: !!(p && p.failed)}; });
+  S.heat = {...j.heat, target: heatHold ? heatShown : j.heat.target};
+  S.coffee = {on: j.coffee.on, mins: j.coffee.on && j.coffee.since ? HomeLib.onFor(j.coffee.since, now) : 0,
+    pending: !!(coffeePending && !coffeePending.failed), failed: !!(coffeePending && coffeePending.failed)};
+}
+
+let pollSeq = 0;
+function poll(){
+  if (!token()){ S.conn = 'setup'; closeLive(); return; }
+  const seq = ++pollSeq;
+  api('GET', '/home/state').then(j => {
+    if (seq !== pollSeq) return;
+    polled = j; S.conn = 'ok'; S.since = null; build(); render();
+  }, err => {
+    if (seq !== pollSeq) return;
+    S.conn = HomeLib.connState(err);
+    if (!S.since) S.since = hhmm(new Date());
+    if (S.conn==='setup') closeLive(); else render();
+  });
+}
+
+function loadStill(id, onload){
+  const im = new Image();
+  im.className = 'scene'; im.alt = '';
+  im.onload = () => onload(im);   // on error keep the old image; its age keeps growing
+  im.src = `${API}/home/cameras/${id}/still?token=${encodeURIComponent(token())}&t=${Date.now()}`;
+}
+function refreshStills(){
+  if (S.live || !polled || !token()) return;
+  for (const c of polled.cameras) if (c.online) loadStill(c.id, im => {
+    stills[c.id] = im; loadedAt[c.id] = Date.now();
+    if (!S.live){ build(); render(); }
+  });
+}
+
+/* ---------- live view ---------- */
+let liveTimer = null;
+function liveFallback(){   // iCUE may not render MJPEG in an <img>: refresh the still once a second instead
+  const el = document.getElementById('liveimg'); if (!el || liveTimer) return;
+  el.onerror = null;
+  const id = S.live;
+  const tick = () => loadStill(id, im => { const cur = document.getElementById('liveimg'); if (cur && S.live===id) cur.src = im.src; });
+  tick(); liveTimer = setInterval(tick, LIVE_FALLBACK_MS);
+}
+function openLive(id){ S.live = id; S.now = hhmmss(new Date()); render(); }
+function closeLive(){
+  clearInterval(liveTimer); liveTimer = null;
+  const el = document.getElementById('liveimg');
+  if (el){ el.onerror = null; el.removeAttribute('src'); el.remove(); }   // drops the stream connection
+  const was = S.live; S.live = null; render();
+  if (was) refreshStills();
+}
+
+/* ---------- actions ---------- */
+function toggleAc(id){
+  const a = S.ac.find(x => x.id===id); if (!a || a.pending) return;
+  const want = !a.on;
+  pending[id] = {want, at: Date.now()}; build(); render();
+  api('POST', `/home/ac/${id}/toggle`, {on: want}).catch(() => {
+    if (pending[id]){ pending[id].failed = true; build(); render(); }
+  });
+}
+function stepHeat(dir){
+  const t = HomeLib.stepTarget(S.heat.target, dir, S.heat);
+  heatShown = t; heatHold = true; S.heat.target = t; render();
+  const seq = ++heatSeq;
+  clearTimeout(heatTimer);
+  heatTimer = setTimeout(() => api('POST', '/home/heating/target', {target: t}).then(() => {
+    if (seq===heatSeq) heatHold = false;
+  }, () => {
+    if (seq!==heatSeq) return;
+    heatHold = false; build(); render();   // back to the last polled target
+  }), HEAT_DEBOUNCE_MS);
+}
+function coffeeOn(){
+  if (S.coffee.on || S.coffee.pending) return;
+  coffeePending = {want: true, at: Date.now()}; build(); render();
+  api('POST', '/home/coffee/on').catch(() => { if (coffeePending){ coffeePending.failed = true; build(); render(); } });
+}
+
+/* ---------- demo interaction (the export's prototype behaviour) ---------- */
+function demoClick(b){
+  if (b.dataset.cam){ S.live=b.dataset.cam; return render(); }
+  if (b.hasAttribute('data-close')){ S.live=null; return render(); }
+  if (b.dataset.heat){ S.heat.target=Math.min(32,Math.max(10,S.heat.target+parseFloat(b.dataset.heat))); return render(); }
+  if (b.hasAttribute('data-coffee') && !S.coffee.on){ S.coffee={on:true,mins:0}; return render(); }
+  if (b.dataset.ac){
+    const a = S.ac.find(x=>x.id===b.dataset.ac); if (a.pending) return;
+    a.failed=false; a.pending = a.on?'off':'on'; render();
+    setTimeout(()=>{ a.on = a.pending==='on'; a.pending=null; render(); }, 1200);
+  }
+}
+
+document.addEventListener('click', e=>{
+  const b = e.target.closest('button'); if (!b || b.disabled) return;
+  if (DEMO) return demoClick(b);
+  if (b.dataset.cam) return openLive(b.dataset.cam);
+  if (b.hasAttribute('data-close')) return closeLive();
+  if (S.conn!=='ok') return;
+  if (b.dataset.heat) return stepHeat(parseFloat(b.dataset.heat) > 0 ? 1 : -1);
+  if (b.hasAttribute('data-coffee')) return coffeeOn();
+  if (b.dataset.ac) return toggleAc(b.dataset.ac);
+});
+
+/* ---------- boot ---------- */
+let started = false;
+function start(){
+  if (started) return; started = true;
+  if (DEMO){
+    S = BASE(); (STATES[DEMO]||STATES.normal)(S); render();
+    setInterval(()=>{ if (S.conn==='ok' && !document.body.dataset.frozen){ S.cameras.forEach(c=>{ c.age = c.age>=5 ? 0 : c.age+1; }); if(!S.live) render(); } }, 1000);
+    return;
+  }
+  S = {conn:'ok', since:null, live:null, now:''};
+  render(); poll(); refreshStills();
+  setInterval(poll, POLL_MS);
+  setInterval(refreshStills, STILL_MS);
+  setInterval(()=>{   // age ticker
+    if (S.live){ const st = document.getElementById('stamp'); if (st) st.textContent = hhmmss(new Date()); }
+    else if (polled){ build(); render(); }
+  }, 1000);
+}
+
+window.icueEvents = window.icueEvents || {};
+window.icueEvents.onICUEInitialized = start;
+window.icueEvents.onDataUpdated = () => { if (!DEMO) poll(); };
+start();   // iCUE does not reliably send onICUEInitialized on the Xeneon Edge
+</script>
+</body>
+</html>

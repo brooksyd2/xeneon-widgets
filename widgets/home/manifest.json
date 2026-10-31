@@ -1,0 +1,17 @@
+{
+  "author": "Damian Brooks",
+  "id": "com.damianbrooks.edge.home",
+  "name": "Home",
+  "description": "Cameras, air con, heating and the coffee machine from Home Assistant. Extra-large XENEON EDGE slot. Needs the local companion.",
+  "version": "1.0.0",
+  "preview_icon": "icon.svg",
+  "min_app_version": "5.52",
+  "min_framework_version": "1.9.0",
+  "os": [{ "platform": "windows" }],
+  "supported_devices": [{ "type": "dashboard_lcd" }],
+  "interactive": true,
+  "permissions": [
+    { "type": "url", "domain": "localhost", "port": 8817 },
+    { "type": "url", "domain": "127.0.0.1", "port": 8817 }
+  ]
+}
