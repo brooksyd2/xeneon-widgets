@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>'Focus'</title>
+<title>'Obsidian'</title>
 <link rel="icon" href="icon.svg" />
 <meta name="x-icue-property" content="apiKey" data-label="tr('Obsidian API key')" data-type="textfield" data-default="''" />
 <meta name="x-icue-property" content="peopleFolder" data-label="tr('People folder')" data-type="textfield" data-default="'Entities/People'" />
@@ -110,7 +110,7 @@ button:focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; bord
 .then-head .lead { display: inline-flex; align-items: baseline; gap: 12px; }
 .list { list-style: none; margin: 0; padding: 0; overflow-y: auto; overflow-x: hidden; touch-action: pan-y; overscroll-behavior: contain; scrollbar-width: none; min-height: 0; flex: 1; }
 .list::-webkit-scrollbar { display: none; }
-.xl .list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; align-content: start; }
+.xl .list { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; }
 .row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; border-top: var(--stroke-panel) solid var(--line); overflow: hidden; }
 .s .row { min-height: 70px; gap: 2px; margin-left: -12px; }
 .xl .row { min-height: 128px; gap: 8px; margin-left: -12px; padding: 8px 0; }

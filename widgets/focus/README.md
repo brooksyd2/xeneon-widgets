@@ -1,4 +1,4 @@
-# Focus: Obsidian tasks widget for the Xeneon Edge
+# Obsidian: tasks widget for the Xeneon Edge
 
 An iCUE HTML widget that shows high-priority and overdue Obsidian tasks, with tap to complete and tap to open. Styled with the Edge Ink design system.
 
@@ -37,7 +37,7 @@ The layout is chosen by viewport width: 1600px or wider uses the extra-large lay
 | Tile | Size | Next up | List |
 | --- | --- | --- | --- |
 | Small | 840 × 344 | Up to 3 lines at 32px, priority, due, people, note | 3 visible rows, single line, swipe to scroll |
-| Extra-large | 2536 × 696 | Full text (up to 4 lines at 52px), priority, due with hand circle when overdue, scheduled, people chips, tappable note link | 2 columns, 2-line text with full meta, about 8 visible, swipe to scroll |
+| Extra-large | 2536 × 696 | Full text (up to 4 lines at 52px), priority, due with hand circle when overdue, scheduled, people chips, tappable note link | 1 full-width column, 2-line text with full meta, about 4 visible, swipe to scroll |
 
 All tap targets are 64px or more. There are no hover states.
 

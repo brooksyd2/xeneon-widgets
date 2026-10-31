@@ -1,9 +1,9 @@
 {
   "author": "Damian Brooks",
   "id": "com.damianbrooks.focus",
-  "name": "Focus",
+  "name": "Obsidian",
   "description": "High-priority and overdue Obsidian tasks, with tap to complete and tap to open.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "preview_icon": "icon.svg",
   "min_framework_version": "1.0.0",
   "min_app_version": "5.0.0",
