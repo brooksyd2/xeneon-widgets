@@ -1,4 +1,5 @@
-const { loadConfig } = require('./config');
+const { loadConfig, dataDir } = require('./config');
+const { signin } = require('./google-auth');
 const { createServer, listen, PORT } = require('./server');
 
 async function serve() {
@@ -12,5 +13,6 @@ async function serve() {
 if (require.main === module) {
   const cmd = process.argv[2];
   if (!cmd) serve().catch((e) => { console.error(e.message); process.exit(1); });
+  else if (cmd === 'signin') signin({ dir: dataDir() }).catch((e) => { console.error(e.message); process.exit(1); });
   else { console.error(`Unknown command: ${cmd}`); process.exit(1); }
 }
