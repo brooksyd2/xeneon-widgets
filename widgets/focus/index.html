@@ -3,15 +3,17 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Focus</title>
-<link rel="icon" type="image/svg+xml" href="icon.svg" />
+<title>'Focus'</title>
+<link rel="icon" href="icon.svg" />
 <meta name="x-icue-property" content="apiKey" data-label="tr('Obsidian API key')" data-type="textfield" data-default="''" />
-<meta name="x-icue-property" content="apiUrl" data-label="tr('Local REST API address')" data-type="textfield" data-default="'http://127.0.0.1:27123'" />
-<meta name="x-icue-property" content="peopleFolder" data-label="tr('People folder')" data-type="textfield" data-default="'People'" />
+<meta name="x-icue-property" content="peopleFolder" data-label="tr('People folder')" data-type="textfield" data-default="'Entities/People'" />
 <script type="application/json" id="x-icue-groups">
-[{ "title": "Obsidian", "properties": ["apiKey", "apiUrl", "peopleFolder"], "info": "Install the Local REST API plugin in Obsidian, enable its HTTP server, then paste its API key here." }]
+[{ "title": "Obsidian", "properties": ["apiKey", "peopleFolder"], "info": "In Obsidian, open Settings, Semantic Notes Vault MCP, and paste its API key here." }]
 </script>
 <link rel="stylesheet" href="shared/edge-ink.css" />
+
+</head>
+<body>
 <style>
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--canvas); overflow: hidden; }
@@ -173,12 +175,11 @@ button:focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; bord
 .kv dt { color: var(--ink-muted); }
 .kv dd { margin: 0; font-family: var(--font-mono); font-size: 24px; color: var(--ink); }
 </style>
-</head>
-<body>
 <main class="w" id="w" aria-live="polite"></main>
 
 <script src="shared/dates.js"></script>
 <script src="shared/icue.js"></script>
+<script src="shared/mcp.js"></script>
 <script src="lib.js"></script>
 <script>
 (function () {
@@ -190,7 +191,6 @@ button:focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; bord
     completeHoldMs: 1000,     /* how long the ticked state shows before the task leaves */
     leaveMs: 260,
     xlBreakpoint: 1600,       /* widths at or above this use the extra-large layout */
-    maxFiles: 150,
     requestTimeoutMs: 6000
   };
   var setting = EdgeIcue.setting;
@@ -221,77 +221,51 @@ button:focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; bord
   /* ---------- Parsing Obsidian Tasks lines ---------- */
   var parseTask = FocusLib.parseTask, selectAndSort = FocusLib.selectAndSort;
 
-  /* ---------- Obsidian Local REST API ---------- */
-  function api(path, opts) {
-    opts = opts || {};
-    var ctl = new AbortController();
-    var timer = setTimeout(function () { ctl.abort(); }, CONFIG.requestTimeoutMs);
-    var headers = Object.assign({ Authorization: 'Bearer ' + setting('apiKey', '') }, opts.headers || {});
-    return fetch(setting('apiUrl', 'http://127.0.0.1:27123').replace(/\/$/, '') + path, { method: opts.method || 'GET', headers: headers, body: opts.body, signal: ctl.signal })
-      .then(function (res) {
-        clearTimeout(timer);
-        if (res.status === 401 || res.status === 403) { var e = new Error('auth'); e.kind = 'auth'; throw e; }
-        if (!res.ok) { var e2 = new Error('http ' + res.status); e2.kind = 'http'; throw e2; }
-        return res;
-      }, function (err) { clearTimeout(timer); var e = new Error('offline'); e.kind = 'offline'; e.cause = err; throw e; });
+  /* ---------- Obsidian MCP server ---------- */
+  var TASK_QUERY = 'TASK WHERE !completed AND status = " " AND !contains(file.path, "\u{1F527} Templates")';
+  var mcp = null, mcpKey = null;
+  function client() {
+    var key = setting('apiKey', '');
+    if (!mcp || key !== mcpKey) {
+      mcpKey = key;
+      mcp = ObsidianMcp.createMcp({ url: 'http://localhost:3001/mcp', key: key, fetch: window.fetch.bind(window), timeoutMs: CONFIG.requestTimeoutMs });
+    }
+    return mcp;
   }
-  function encPath(p) { return p.split('/').map(encodeURIComponent).join('/'); }
+  function peopleFolder() { return setting('peopleFolder', 'Entities/People'); }
+
+  function dvValues(r) { return (r && r.result && r.result.result && r.result.result.values) || []; }
 
   function loadPeople() {
-    var folder = setting('peopleFolder', 'People');
-    return api('/vault/' + encPath(folder) + '/', { headers: { Accept: 'application/json' } })
-      .then(function (r) { return r.json(); })
-      .then(function (j) {
+    return client().call('dataview', { action: 'query', raw: true, query: 'LIST FROM "' + peopleFolder().replace(/"/g, '') + '"' })
+      .then(function (r) {
         var map = {};
-        (j.files || []).forEach(function (f) { if (/\.md$/i.test(f)) map[f.replace(/\.md$/i, '').split('/').pop().toLowerCase()] = true; });
+        dvValues(r).forEach(function (v) {
+          if (v && /\.md$/i.test(v.path)) map[v.path.replace(/\.md$/i, '').split('/').pop().toLowerCase()] = true;
+        });
         return map;
       })
       .catch(function (e) { if (e.kind === 'auth' || e.kind === 'offline') throw e; return {}; });
   }
 
-  function searchFiles(q) {
-    return api('/search/simple/?contextLength=1&query=' + encodeURIComponent(q), { method: 'POST' })
-      .then(function (r) { return r.json(); })
-      .then(function (rows) { return rows.map(function (r) { return r.filename; }); });
-  }
-
   function fetchTasks(today) {
     return loadPeople().then(function (people) {
-      /* Files containing a high/medium priority marker or any due date (for overdue tasks of any priority). */
-      return Promise.all(['⏫', '\u{1F53A}', '\u{1F53C}', '\u{1F4C5}'].map(searchFiles)).then(function (lists) {
-        var seen = {}, files = [];
-        lists.forEach(function (l) { l.forEach(function (f) { if (!seen[f]) { seen[f] = 1; files.push(f); } }); });
-        files = files.slice(0, CONFIG.maxFiles);
-        var out = [], i = 0;
-        function worker() {
-          if (i >= files.length) return Promise.resolve();
-          var f = files[i++];
-          return api('/vault/' + encPath(f), { headers: { Accept: 'text/markdown' } })
-            .then(function (r) { return r.text(); })
-            .then(function (md) {
-              md.split(/\r?\n/).forEach(function (line, n) { var t = parseTask(line, f, n, people, today, folder); if (t) out.push(t); });
-            }, function (e) { if (e.kind === 'auth' || e.kind === 'offline') throw e; })
-            .then(worker);
-        }
-        return Promise.all([worker(), worker(), worker(), worker()]).then(function () { return selectAndSort(out); });
+      return client().call('dataview', { action: 'query', raw: true, query: TASK_QUERY }).then(function (r) {
+        return FocusLib.tasksFromDataview(dvValues(r), people, today, peopleFolder());
       });
     });
   }
 
-  /* Ticks the exact line in its note (Tasks plugin convention: [x] plus a done date). */
+  /* Ticks the exact line in its note: one-line replace, never a whole-note rewrite. */
   function completeRemote(t) {
-    return api('/vault/' + encPath(t.path), { headers: { Accept: 'text/markdown' } })
-      .then(function (r) { return r.text(); })
-      .then(function (md) {
-        var nl = md.indexOf('\r\n') !== -1 ? '\r\n' : '\n';
-        var lines = md.split(/\r?\n/);
-        var idx = lines[t.line] === t.raw ? t.line : lines.indexOf(t.raw);
-        if (idx === -1) { var e = new Error('moved'); e.kind = 'moved'; throw e; }
-        lines[idx] = lines[idx].replace('[ ]', '[x]') + ' ✅ ' + iso(new Date());
-        return api('/vault/' + encPath(t.path), { method: 'PUT', headers: { 'Content-Type': 'text/markdown' }, body: lines.join(nl) });
-      });
+    return client().call('view', { action: 'file', path: t.path, raw: true }).then(function (r) {
+      var lines = String((r && r.result && r.result.content) || '').split(/\r?\n/);
+      var idx = FocusLib.findTaskLine(lines, t.line, t.body);
+      if (idx === -1) { var e = new Error('moved'); e.kind = 'moved'; throw e; }
+      return client().call('edit', { action: 'at_line', path: t.path, mode: 'replace', lineNumber: idx + 1, content: FocusLib.completeLine(lines[idx], iso(new Date())) });
+    });
   }
-  function openRemote(t) { return api('/open/' + encPath(t.path), { method: 'POST' }); }
+  function openRemote(t) { return client().call('view', { action: 'open_in_obsidian', path: t.path }); }
 
   /* ---------- State ---------- */
   var S = {
@@ -405,12 +379,12 @@ button:focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; bord
       '<div class="msg-copy"><span class="hand">' + (auth ? 'check key' : 'set up') + '</span>' +
       '<span class="msg-title">' + (auth ? 'Obsidian didn’t accept the API key' : 'Connect Focus to Obsidian') + '</span>' +
       '<ol class="steps">' +
-        '<li><span>In Obsidian, install <b>Local REST API</b>, turn on its HTTP server and copy the API key.</span></li>' +
+        '<li><span>In Obsidian, open <b>Settings → Semantic Notes Vault MCP</b> and copy the API key.</span></li>' +
         '<li><span>In iCUE, open this widget’s settings and paste it into <b>Obsidian API key</b>.</span></li>' +
       '</ol></div>' +
       '<div class="msg-aside"><dl class="kv">' +
-        '<dt>Plugin</dt><dd>Local REST API</dd>' +
-        '<dt>Address</dt><dd>' + esc(setting('apiUrl', 'http://127.0.0.1:27123')) + '</dd>' +
+        '<dt>Plugin</dt><dd>Semantic Notes Vault MCP</dd>' +
+        '<dt>Address</dt><dd>' + 'localhost:3001' + '</dd>' +
         '<dt>Shows</dt><dd>High, medium, overdue</dd>' +
       '</dl></div>' +
     '</section>';
