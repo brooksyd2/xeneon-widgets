@@ -490,14 +490,15 @@ button.ev:active,button.ev:active + .ev{border-top-color:transparent}
     if (err.status === 401) return 'badtoken';
     return null;
   }
+  var pending = { archive: {}, read: {} };   // ids with an action in flight; a poll must not undo them
   function applyState(j) {
     S.events = (j.events || []).map(function (e) {
       return { id: e.id, guests: e.guests || 0, title: e.title, start: Date.parse(e.start), end: Date.parse(e.end), allDay: !!e.allDay, meetUrl: e.meetUrl || null, location: e.location || '' };
     });
     S.tomorrowFirst = j.tomorrowFirst ? { title: j.tomorrowFirst.title, start: Date.parse(j.tomorrowFirst.start) } : null;
     S.messages = (j.messages || []).map(function (m) {
-      return { id: m.id, from: m.from || { name: '', email: '' }, subject: m.subject || '(no subject)', snippet: m.snippet || '', date: Date.parse(m.date), unread: !!m.unread };
-    }).sort(function (a, b) { return b.date - a.date; });
+      return { id: m.id, from: m.from || { name: '', email: '' }, subject: m.subject || '(no subject)', snippet: m.snippet || '', date: Date.parse(m.date), unread: !!m.unread && !pending.read[m.id] };
+    }).filter(function (m) { return !pending.archive[m.id]; }).sort(function (a, b) { return b.date - a.date; });
     if (S.selectedId && !S.messages.some(function (m) { return m.id === S.selectedId; })) S.selectedId = null;
     S.lastSync = now();
   }
@@ -549,9 +550,11 @@ button.ev:active,button.ev:active + .ev{border-top-color:transparent}
     S.messages.splice(i, 1);                                   // optimistic
     if (wasSelected) S.selectedId = null;
     renderInbox(); renderRead();
-    return call('POST', '/messages/' + encodeURIComponent(id) + '/archive').then(function () { refresh(); }, function (err) {
+    pending.archive[id] = true;
+    return call('POST', '/messages/' + encodeURIComponent(id) + '/archive').then(function () { delete pending.archive[id]; refresh(); }, function (err) {
+      delete pending.archive[id];
       var c = err && classify(err); if (c) S.mode = c;
-      S.messages.splice(Math.min(i, S.messages.length), 0, m);  // restore in place
+      if (findIdx(id) < 0) S.messages.splice(Math.min(i, S.messages.length), 0, m);  // restore in place
       if (wasSelected) S.selectedId = id;
       renderAll();
       showToast('<b>Couldn’t archive</b> “' + esc(m.subject) + '”. It’s back in your inbox.', id);
@@ -560,8 +563,10 @@ button.ev:active,button.ev:active + .ev{border-top-color:transparent}
   function markRead(id) {
     var i = findIdx(id); if (i < 0) return;
     var m = S.messages[i]; m.unread = false; renderInbox();
-    call('POST', '/messages/' + encodeURIComponent(id) + '/read').then(function () { refresh(); }, function () {
-      m.unread = true; showToast('<b>Couldn’t mark as read.</b> Try again in a moment.', id);
+    pending.read[id] = true;
+    call('POST', '/messages/' + encodeURIComponent(id) + '/read').then(function () { delete pending.read[id]; refresh(); }, function () {
+      delete pending.read[id];
+      var j = findIdx(id); if (j >= 0) S.messages[j].unread = true; showToast('<b>Couldn’t mark as read.</b> Try again in a moment.', id);
     });
   }
   function join(id) {
