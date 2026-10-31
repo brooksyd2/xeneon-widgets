@@ -8,7 +8,19 @@ const routes = [
   { method: 'GET', path: '/signed-out', handler: async () => { throw new HttpError(503, 'signed_out'); } },
   { method: 'GET', path: '/duck', handler: async () => { throw Object.assign(new Error('x'), { status: 404, kind: 'not_found' }); } },
   { method: 'GET', path: '/boom', handler: async () => { throw new Error('secret detail'); } },
+  { method: 'GET', path: '/img', queryToken: true, handler: async () => ({ json: { img: true } }) },
+  { method: 'GET', path: '/pic', handler: async () => ({ contentType: 'image/jpeg', stream: new Blob([Buffer.from('JPEGDATA')]).stream() }) },
+  { method: 'GET', path: '/endless', handler: async (req, { signal }) => {
+    seenSignal = signal;
+    let timer;
+    const stream = new ReadableStream({
+      start(c) { timer = setInterval(() => { if (signal.aborted) clearInterval(timer); else c.enqueue(Buffer.from('x')); }, 50); },
+      cancel() { clearInterval(timer); },
+    });
+    return { contentType: 'image/jpeg', stream };
+  } },
 ];
+let seenSignal;
 
 async function withServer(fn) {
   const server = createServer({ token: 'tok', routes });
@@ -65,4 +77,28 @@ test('any error with status and kind is mapped (duck-typed)', () => withServer(a
   const res = await fetch(`${base}/v1/duck`, auth);
   assert.strictEqual(res.status, 404);
   assert.deepStrictEqual(await res.json(), { error: 'not_found' });
+}));
+
+test('queryToken route accepts ?token= and others do not', () => withServer(async (base) => {
+  assert.strictEqual((await fetch(`${base}/v1/img?token=tok`)).status, 200);
+  assert.strictEqual((await fetch(`${base}/v1/ping?token=tok`)).status, 401);
+  assert.strictEqual((await fetch(`${base}/v1/img?token=nope`)).status, 401);
+}));
+
+test('stream result is piped with its content type', () => withServer(async (base) => {
+  const res = await fetch(`${base}/v1/pic`, auth);
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(res.headers.get('content-type'), 'image/jpeg');
+  assert.strictEqual(res.headers.get('cache-control'), 'no-store');
+  assert.strictEqual(res.headers.get('access-control-allow-origin'), '*');
+  assert.strictEqual(await res.text(), 'JPEGDATA');
+}));
+
+test('client disconnect aborts the handler signal', () => withServer(async (base) => {
+  const ac = new AbortController();
+  const res = await fetch(`${base}/v1/endless`, { ...auth, signal: ac.signal });
+  await res.body.getReader().read();
+  ac.abort();
+  for (let i = 0; i < 20 && !seenSignal.aborted; i++) await new Promise((r) => setTimeout(r, 50));
+  assert.strictEqual(seenSignal.aborted, true);
 }));
