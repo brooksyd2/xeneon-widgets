@@ -25,6 +25,7 @@ test('heatingStatus', () => {
   assert.deepEqual(heatingStatus({ mode: 'heat', room: 19.2, target: 21, action: 'heating' }), { badge: 'Heating', line: 'Heating to 21.0°' });
   assert.deepEqual(heatingStatus({ mode: 'heat', room: 19.2, target: 21, action: 'idle' }), { badge: 'Idle', line: 'Idle · set to 21.0°' });
   assert.deepEqual(heatingStatus({ mode: 'heat', room: 19.2, target: 18, action: 'idle' }), { badge: 'Idle', line: 'Idle · target below room' });
+  assert.deepEqual(heatingStatus({ mode: 'heat', room: 19.2, target: null, action: 'heating' }), { badge: 'Heating', line: 'Heating' });
 });
 test('settle', () => {
   assert.equal(settle({ want: true, at: 0 }, true, 5), 'done');

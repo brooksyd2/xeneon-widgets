@@ -249,7 +249,7 @@ function ac(s,id,patch){ Object.assign(s.ac.find(a=>a.id===id),patch); }
 const fmtT = t => t==null ? '—' : t.toFixed(1);   // HA reports null for an unavailable sensor
 const ageText = sec => sec == null ? '' : HomeLib.ageText(sec);
 // demo shows the export's SVG scenes; live puts a placeholder that render() swaps for the loaded still
-const scene = id => DEMO ? SCENES[id] : `<span data-scene="${id}"></span>`;
+const scene = id => DEMO ? SCENES[id] : `<span class="scene" data-scene="${id}"></span>`;
 
 function connBadge(s){
   if (s.conn==='companion') return `<span class="badge warn">${icon('plugoff')}Companion not running<span class="soft">&nbsp;· from ${s.since}</span></span>`;
@@ -280,9 +280,9 @@ function acTile(a, disabled){
   let cls = 'tile' + (a.big?' big':''), state, retry='';
   if (a.pending){ cls+=' pending'; state = `${spinner}<span>${a.pending==='on'?'Turning on':'Turning off'}</span>`; }
   else if (a.failed){ cls+=' failed'; state = `${icon('crossmark')}<span>Failed</span>`; retry = `<span class="retry">No response. Tap to retry</span>`; }
-  else if (a.on){ cls+=' on'; state = `${icon(a.mode)}<span>${MODE[a.mode]}</span><span class="tgt">&nbsp;→ ${a.target}°</span>`; }
+  else if (a.on){ cls+=' on'; state = `${icon(a.mode)}<span>${MODE[a.mode]}</span>${a.target==null?'':`<span class="tgt">&nbsp;→ ${a.target}°</span>`}`; }
   else state = `<span>Off</span>`;
-  const label = `${a.name}, room ${fmtT(a.room)} degrees, ${a.on?'on, '+MODE[a.mode]+' to '+a.target+' degrees':'off'}. Tap to turn ${a.on?'off':'on'}`;
+  const label = `${a.name}, room ${fmtT(a.room)} degrees, ${a.on?'on, '+MODE[a.mode]+(a.target==null?'':' to '+a.target+' degrees'):'off'}. Tap to turn ${a.on?'off':'on'}`;
   return `<button class="${cls}" data-ac="${a.id}" ${disabled} aria-label="${label}">
     <span class="top"><span class="name">${a.name}</span><span class="pw">${icon('power')}</span></span>
     <span><span class="temp">${fmtT(a.room)}<small>°</small></span>${a.big?'<span class="room" style="display:block">in the room</span>':''}</span>
@@ -339,7 +339,7 @@ function liveView(s){
   </div>`;
 }
 
-let S;
+let S, lastSig = null;
 const hhmm = d => String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
 const hhmmss = d => hhmm(d) + ':' + String(d.getSeconds()).padStart(2,'0');
 
@@ -347,6 +347,9 @@ function render(){
   const app = document.getElementById('app');
   app.className = 'screen' + (S.conn==='companion'||S.conn==='ha' ? ' stale' : '');
   if (S.live && document.getElementById('liveimg')) return;   // re-rendering would reopen the stream
+  // rebuild only when something shown changed: a rebuild mid-tap loses the tap. Ages update in place (tickAges).
+  const sig = JSON.stringify(S, (k, v) => k==='age' ? undefined : v);
+  if (sig===lastSig) return; lastSig = sig;
   if (!S.live && !S.heat && S.conn!=='setup'){   // no data yet: blank while loading, badge if never reached
     app.innerHTML = S.conn==='ok' ? '' : `<section class="panel" style="width:100%"><div class="head"><span class="label">home</span>${connBadge(S)}</div></section>`;
     return;
@@ -355,6 +358,13 @@ function render(){
   app.querySelectorAll('[data-scene]').forEach(el => { if (stills[el.dataset.scene]) el.replaceWith(stills[el.dataset.scene]); });
   const live = document.getElementById('liveimg');
   if (live) live.onerror = liveFallback;
+}
+function tickAges(){
+  if (S.live || !S.cameras) return;
+  for (const c of S.cameras){
+    const el = document.querySelector(`[data-cam="${c.id}"] .age`); if (!el) continue;
+    el.textContent = ageText(c.age); el.classList.toggle('old', c.age >= 60);
+  }
 }
 
 /* ---------- companion ---------- */
@@ -379,7 +389,7 @@ function api(method, path, body){
 let polled = null;            // last GET /home/state body
 const pending = {};           // AC id -> {want, at, failed}
 let coffeePending = null;     // {want:true, at, failed}
-let heatHold = false, heatSeq = 0, heatTimer = null, heatShown = null;
+let heatHold = null, heatSeq = 0, heatTimer = null;   // heatHold {want, at}: at is null until the POST succeeds
 const stills = {}, loadedAt = {};   // camera id -> loaded <img>, ms of its load
 
 function settleAll(p, on, now){ const r = HomeLib.settle(p, on, now); if (r==='failed') p.failed = true; return r==='done'; }
@@ -392,20 +402,20 @@ function build(){
     age: loadedAt[c.id] ? Math.floor((now - loadedAt[c.id]) / 1000) : null}));
   S.ac = j.ac.map(a => { const p = pending[a.id];
     return {...a, pending: p && !p.failed ? (p.want ? 'on' : 'off') : null, failed: !!(p && p.failed)}; });
-  S.heat = {...j.heat, target: heatHold ? heatShown : j.heat.target};
+  if (heatHold && heatHold.at && HomeLib.settle(heatHold, j.heat.target, now)!=='pending') heatHold = null;   // confirmed, or 10 s passed
+  S.heat = {...j.heat, target: heatHold ? heatHold.want : j.heat.mode==='off' ? null : j.heat.target};
   S.coffee = {on: j.coffee.on, mins: j.coffee.on && j.coffee.since ? HomeLib.onFor(j.coffee.since, now) : 0,
     pending: !!(coffeePending && !coffeePending.failed), failed: !!(coffeePending && coffeePending.failed)};
 }
 
-let pollSeq = 0;
+let polling = false;
 function poll(){
   if (!token()){ S.conn = 'setup'; closeLive(); return; }
-  const seq = ++pollSeq;
-  api('GET', '/home/state').then(j => {
-    if (seq !== pollSeq) return;
+  if (polling) return;   // never overlap: a slow answer (the companion's 5 s HA timeout) must still be applied
+  polling = true;
+  api('GET', '/home/state').finally(() => { polling = false; }).then(j => {
     polled = j; S.conn = 'ok'; S.since = null; build(); render();
   }, err => {
-    if (seq !== pollSeq) return;
     S.conn = HomeLib.connState(err);
     if (!S.since) S.since = hhmm(new Date());
     if (S.conn==='setup') closeLive(); else render();
@@ -422,7 +432,9 @@ function refreshStills(){
   if (S.live || !polled || !token()) return;
   for (const c of polled.cameras) if (c.online) loadStill(c.id, im => {
     stills[c.id] = im; loadedAt[c.id] = Date.now();
-    if (!S.live){ build(); render(); }
+    const old = document.querySelector(`[data-cam="${c.id}"] .scene`);
+    if (old && old !== im) old.replaceWith(im);
+    build(); tickAges();
   });
 }
 
@@ -455,14 +467,14 @@ function toggleAc(id){
 }
 function stepHeat(dir){
   const t = HomeLib.stepTarget(S.heat.target, dir, S.heat);
-  heatShown = t; heatHold = true; S.heat.target = t; render();
+  heatHold = {want: t, at: null}; S.heat.target = t; render();
   const seq = ++heatSeq;
   clearTimeout(heatTimer);
   heatTimer = setTimeout(() => api('POST', '/home/heating/target', {target: t}).then(() => {
-    if (seq===heatSeq) heatHold = false;
+    if (seq===heatSeq) heatHold.at = Date.now();
   }, () => {
     if (seq!==heatSeq) return;
-    heatHold = false; build(); render();   // back to the last polled target
+    heatHold = null; build(); render();   // back to the last polled target
   }), HEAT_DEBOUNCE_MS);
 }
 function coffeeOn(){
@@ -501,7 +513,7 @@ function start(){
   if (started) return; started = true;
   if (DEMO){
     S = BASE(); (STATES[DEMO]||STATES.normal)(S); render();
-    setInterval(()=>{ if (S.conn==='ok' && !document.body.dataset.frozen){ S.cameras.forEach(c=>{ c.age = c.age>=5 ? 0 : c.age+1; }); if(!S.live) render(); } }, 1000);
+    setInterval(()=>{ if (S.conn==='ok' && !document.body.dataset.frozen){ S.cameras.forEach(c=>{ c.age = c.age>=5 ? 0 : c.age+1; }); tickAges(); } }, 1000);
     return;
   }
   S = {conn:'ok', since:null, live:null, now:''};
@@ -510,7 +522,7 @@ function start(){
   setInterval(refreshStills, STILL_MS);
   setInterval(()=>{   // age ticker
     if (S.live){ const st = document.getElementById('stamp'); if (st) st.textContent = hhmmss(new Date()); }
-    else if (polled){ build(); render(); }
+    else if (polled){ build(); tickAges(); render(); }   // render() is a no-op unless pending/failed changed
   }, 1000);
 }
 
