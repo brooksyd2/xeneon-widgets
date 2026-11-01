@@ -32,6 +32,11 @@ test('boot does not wait for onICUEInitialized', () => {
 test('the companion token setting exists', () => {
   assert.ok(html.includes('content="companionToken"'));
 });
-test('no templated src/href in markup (icuewidget validate treats them as local assets)', () => {
-  assert.ok(!/(src|href)="\$\{/.test(html));
+test('every src/href/url() in index.html is a real file in the widget (as icuewidget validate checks)', () => {
+  const refs = [...html.matchAll(/(?:src|href)="([^"]*)"|url\("([^"]*)"\)/g)].map(m => m[1] ?? m[2]);
+  assert.ok(refs.length > 0);
+  for (const ref of refs) {
+    const file = ref.startsWith('shared/') ? path.join(dir, '..', '..', ref) : path.join(dir, ref);
+    assert.ok(fs.existsSync(file), `missing asset: ${ref}`);
+  }
 });

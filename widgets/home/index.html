@@ -357,7 +357,7 @@ function render(){
   app.innerHTML = S.live ? liveView(S) : camerasPanel(S)+acPanel(S)+heatPanel(S)+coffeePanel(S);
   app.querySelectorAll('[data-scene]').forEach(el => { if (stills[el.dataset.scene]) el.replaceWith(stills[el.dataset.scene]); });
   const live = document.getElementById('liveimg');
-  // src set here, not in the markup: icuewidget validate treats any src="..." in index.html as a local asset path
+  // URL set here, not in the markup: icuewidget validate treats every src attribute in index.html as a local file
   if (live) { live.onerror = liveFallback; live.src = `${API}/home/cameras/${live.dataset.live}/live?token=${encodeURIComponent(token())}`; }
 }
 function tickAges(){
