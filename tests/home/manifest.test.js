@@ -32,3 +32,6 @@ test('boot does not wait for onICUEInitialized', () => {
 test('the companion token setting exists', () => {
   assert.ok(html.includes('content="companionToken"'));
 });
+test('no templated src/href in markup (icuewidget validate treats them as local assets)', () => {
+  assert.ok(!/(src|href)="\$\{/.test(html));
+});
